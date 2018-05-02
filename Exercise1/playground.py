@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 # -*- coding: utf-8 -*-
 """
 Transfer Learning tutorial
@@ -50,7 +49,7 @@ import os
 import copy
 
 plt.ion()   # interactive mode
-torch.backends.cudnn.benchmark=True
+
 ######################################################################
 # Load Data
 # ---------
@@ -75,13 +74,13 @@ torch.backends.cudnn.benchmark=True
 # Data augmentation and normalization for training
 # Just normalization for validation
 data_transforms = {
-    'TrainingSet': transforms.Compose([
+    'train': transforms.Compose([
         transforms.RandomResizedCrop(224),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
-    'TestSet': transforms.Compose([
+    'val': transforms.Compose([
         transforms.Resize(256),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
@@ -89,18 +88,18 @@ data_transforms = {
     ]),
 }
 
-data_dir = 'Images'
+data_dir = 'hymenoptera_data'
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
                                           data_transforms[x])
-                  for x in ['TrainingSet', 'TestSet']}
+                  for x in ['train', 'val']}
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=4,
                                              shuffle=True, num_workers=4)
-              for x in ['TrainingSet', 'TestSet']}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['TrainingSet', 'TestSet']}
-class_names = image_datasets['TrainingSet'].classes
+              for x in ['train', 'val']}
+dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+class_names = image_datasets['train'].classes
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#device = torch.device("cuda")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 ######################################################################
 # Visualize a few images
 # ^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +120,7 @@ def imshow(inp, title=None):
 
 
 # Get a batch of training data
-inputs, classes = next(iter(dataloaders['TrainingSet']))
+inputs, classes = next(iter(dataloaders['train']))
 
 # Make a grid from batch
 out = torchvision.utils.make_grid(inputs)
@@ -154,8 +153,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
         print('-' * 10)
 
         # Each epoch has a training and validation phase
-        for phase in ['TrainingSet', 'TestSet']:
-            if phase == 'TrainingSet':
+        for phase in ['train', 'val']:
+            if phase == 'train':
                 scheduler.step()
                 model.train()  # Set model to training mode
             else:
@@ -174,13 +173,13 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
                 # forward
                 # track history if only in train
-                with torch.set_grad_enabled(phase == 'TrainingSet'):
+                with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
                     _, preds = torch.max(outputs, 1)
                     loss = criterion(outputs, labels)
 
                     # backward + optimize only if in training phase
-                    if phase == 'TrainingSet':
+                    if phase == 'train':
                         loss.backward()
                         optimizer.step()
 
@@ -195,7 +194,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                 phase, epoch_loss, epoch_acc))
 
             # deep copy the model
-            if phase == 'TestSet' and epoch_acc > best_acc:
+            if phase == 'val' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
@@ -225,7 +224,7 @@ def visualize_model(model, num_images=6):
     fig = plt.figure()
 
     with torch.no_grad():
-        for i, (inputs, labels) in enumerate(dataloaders['TestSet']):
+        for i, (inputs, labels) in enumerate(dataloaders['val']):
             inputs = inputs.to(device)
             labels = labels.to(device)
 
