@@ -10,43 +10,69 @@ from torch.optim import lr_scheduler
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
+from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 import time
 import os
 import copy
-
 
 device = torch.device("cuda")
 
 
 ### Transformation applied to Training Data
 
-data_transforms = {
-    'TrainingSet': transforms.Compose([
+data_transforms = transforms.Compose([
         transforms.Resize((32,32)),
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [1, 1, 1])
     ])
-}
-        
-data_dir = 'Images'
 
-image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) 
-                  for x in ['TrainingSet']}
+data_dir = 'TrainingSet'
 
-dataset_length = len(image_datasets['TrainingSet'])
+image_dataset = datasets.ImageFolder(os.path.join(data_dir), data_transforms)
 
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size= int(dataset_length * 0.2) , 
+train_loader =  DataLoader(image_dataset, batch_size= 1,
                                               shuffle=True, num_workers=4, drop_last = True,
                                               pin_memory = True)
-                                                    for x in ['TrainingSet']}
+
+class_names = image_dataset.classes
+
+print("Length of dataset: {}".format(len(train_loader)))
+print("Amount of classes: {}".format(len(class_names)))
+
+
+train_data = []
+val_data = []
+
+foo = np.array(np.arange(len(train_loader)))
+np.random.shuffle(foo)
+
+
+for (idx, val) in enumerate(foo):
+    if (idx < int(0.8*len(image_dataset))):
+        train_data.append(image_dataset[val])
+    else:
+        val_data.append(image_dataset[val])
+
+# plt.figure()
+# plt.imshow(train_data[2][0].numpy().transpose((1,2,0)))
+# plt.show()
+
+for batch_idx, (data, target) in enumerate(train_data):
+    print(data, target)
+    plt.figure()
+    plt.imshow(data.numpy().transpose((1,2,0)))
+    plt.show()
+    exit()
+
+print(len(train_data))
+print(len(val_data))
 
 
 
-# Get a batch of training data
-inputs, classes = next(iter(dataloaders['TrainingSet']))
+exit()
 
-class_names = image_datasets['TrainingSet'].classes
+
 
 print("Length of the whole Training Set: {}".format(dataset_length))
 print("Amount of Batches when using a 80/20 Train/Val Ratio:{}".format(len(dataloaders['TrainingSet'])))
@@ -64,7 +90,7 @@ def imshow(inp, title=None):
     if title is not None:
         plt.title(title)
     plt.pause(0.001)  # pause a bit so that plots are updated
-    
+
 
 
 # Make a grid from batch
@@ -81,7 +107,7 @@ class Net(nn.Module):
         self.conv2_drop = nn.Dropout2d()
         self.fc1 = nn.Linear(1280, 512)
         self.fc2 = nn.Linear(512, 43)
-    
+
     def forward(self, x):
         x = F.relu(F.max_pool2d(self.conv1(x),2))
         x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
@@ -91,10 +117,10 @@ class Net(nn.Module):
         x = F.dropout(x, training = self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
-    
-        
-    
-    
+
+
+
+
 model = Net().to(device)
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
 
@@ -120,11 +146,7 @@ def train(epoch):
                 epoch, batch_idx * len(data), len(dataloaders.dataset),
                 100. * batch_idx / len(dataloaders), loss.item()))
 
-        
+
 num_train_epochs = 10
 for epoch in range(1, num_train_epochs + 1):
-    train(epoch)        
-        
-        
-        
-        
+    train(epoch)
