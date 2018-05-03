@@ -4,6 +4,7 @@ from __future__ import print_function, division
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim import lr_scheduler
 import numpy as np
@@ -13,6 +14,9 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
+
+
+device = torch.device("cuda")
 
 
 ### Transformation applied to Training Data
@@ -38,13 +42,15 @@ dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size= int
                                                     for x in ['TrainingSet']}
 
 
-print(dataset_length)
-print(len(dataloaders['TrainingSet']))
 
 # Get a batch of training data
 inputs, classes = next(iter(dataloaders['TrainingSet']))
 
 class_names = image_datasets['TrainingSet'].classes
+
+print("Length of the whole Training Set: {}".format(dataset_length))
+print("Amount of Batches when using a 80/20 Train/Val Ratio:{}".format(len(dataloaders['TrainingSet'])))
+print("Elements in one Batch: {}".format(len(inputs)))
 
 
 def imshow(inp, title=None):
@@ -62,7 +68,63 @@ def imshow(inp, title=None):
 
 
 # Make a grid from batch
-out = torchvision.utils.make_grid(inputs[0])
+#out = torchvision.utils.make_grid(inputs[0])
 
-imshow(out, title=[class_names[x] for x in classes])
-plt.show()
+#imshow(out, title=[class_names[x] for x in classes])
+#plt.show()
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(3, 10, kernel_size = 3, padding = 2, stride = 2)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size = 3, padding = 0, stride = 2)
+        self.conv2_drop = nn.Dropout2d()
+        self.fc1 = nn.Linear(1280, 512)
+        self.fc2 = nn.Linear(512, 43)
+    
+    def forward(self, x):
+        x = F.relu(F.max_pool2d(self.conv1(x),2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        print("x.shape: {}".format(x.shape))
+        x = x.view(-1, 1280)
+        x = F.relu(self.fc1(x))
+        x = F.dropout(x, training = self.training)
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
+    
+        
+    
+    
+model = Net().to(device)
+optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
+
+
+# This function trains the neural network for one epoch
+def train(epoch):
+    model.train()
+    for batch_idx, (data, target) in enumerate(dataloaders['TrainingSet']):
+        # Move the input and target data on the GPU
+        data, target = data.to(device), target.to(device)
+        # Zero out gradients from previous step
+        optimizer.zero_grad()
+        # Forward pass of the neural net
+        output = model(data)
+        # Calculation of the loss function
+        loss = F.nll_loss(output, target)
+        # Backward pass (gradient computation)
+        loss.backward()
+        # Adjusting the parameters according to the loss function
+        optimizer.step()
+        if batch_idx % 10 == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(dataloaders.dataset),
+                100. * batch_idx / len(dataloaders), loss.item()))
+
+        
+num_train_epochs = 10
+for epoch in range(1, num_train_epochs + 1):
+    train(epoch)        
+        
+        
+        
+        
