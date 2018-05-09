@@ -94,34 +94,38 @@ class H5Dataset(Dataset):
     I have no idea what depth and labels are supposed to mean, since they are
     not documented. I will omit them
     '''
-
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
         self.transform = transform
 
+        self.file_idx = 0
+
     def __len__(self):
         return len(os.listdir(self.root_dir))
+
 
     def __getitem__(self, idx):
         file_names =  sorted(os.listdir(self.root_dir))
 
-        #if isinstance(idx, tuple):
-        #    idx = idx[0]
+        # The input idx seems sequential but we're actually going through the
+        # images in each file and going through all the files in order.
+        # Note: Danger! This >>WILL<< break, if any h5 file doesn't have
+        # >>EXACTLY<< 200 images
+        file_idx = int(idx / 200)
+        idx = idx % 200
 
-        print("Idx: {}, Type: {}".format(idx, type(idx)))
-        f = h5py.File(self.root_dir + '/' + file_names[idx], 'r')
+        # print("Idx: {}, Type: {}".format(idx, type(idx)))  # TODO: Remove me
+        f = h5py.File(self.root_dir + '/' + file_names[file_idx], 'r')
 
         # for magic idx numers inspect class description
         data = f['rgb']
         targets = f['targets']
-        sample = {'filename' : file_names[idx],
-                     'data' : data[idx[-1]], 'targets' : targets[idx[-1]]}
+        sample = {'filename' : file_names[file_idx],
+                     'data' : data[idx], 'targets' : targets[idx]}
 
         if self.transform:
             sample['data'] = self.transform(sample['data'])
         return sample
-
-
 
 
 if  __name__=="__main__":
@@ -137,11 +141,10 @@ if  __name__=="__main__":
     train_loader = torch.utils.data.DataLoader(train_set,batch_size=32, shuffle=True, pin_memory=False)
 
     # if no index given, generate random index pair
-    file_idx, image_idx = random.randrange(0,len(train_set)), random.randrange(0,200)
+    idx = random.randrange(0,len(train_set)*random.randrange(0,200))
 
-
-    sample = train_set[file_idx,image_idx]
-    # show_image(sample, not False)
+    sample = train_set[idx]
+    show_image(sample, not False)
 
 
     # TODO: dataset so anpassen, dass die pytorch collate fn arbeiten kann!
