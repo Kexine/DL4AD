@@ -14,46 +14,42 @@ import warnings
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
+IMAGES_PER_FILE = 200
 
-'''
-# Target Array
-# 1. Steer, float
-# 2. Gas, float
-# 3. Brake, float
-# 4. Hand Brake, boolean
-# 5. Reverse Gear, boolean
-# 6. Steer Noise, float
-# 7. Gas Noise, float
-# 8. Brake Noise, float
-# 9. Position X, float
-# 10. Position Y, float
-# 11. Speed, float
-# 12. Collision Other, float
-# 13. Collision Pedestrian, float
-# 14. Collision Car, float
-# 15. Opposite Lane Inter, float
-# 16. Sidewalk Intersect, float
-# 17. Acceleration X,float
-# 18. Acceleration Y, float
-# 19. Acceleration Z, float
-# 20. Platform time, float
-# 21. Game Time, float
-# 22. Orientation X, float
-# 23. Orientation Y, float
-# 24. Orientation Z, float
-# 25. High level command, int ( 2 Follow lane, 3 Left, 4 Right, 5 Straight)
-# 26. Noise, Boolean ( If the noise, perturbation, is activated, (Not Used) )
-# 27. Camera (Which camera was used)
-# 28. Angle (The yaw angle for this camera)
-'''
+# Target Array indices
+STEER_IDX = 0 # float
+GAS_IDX = 1 # float
+BRAKE_IDX = 2 # float
+HAND_BRAKE_IDX = 3 # boolean
+REVERSE_GEAR_IDX = 4 # boolean
+STEER_NOISE_IDX = 5 # float
+GAS_NOISE_IDX = 6 # float
+BRAKE_NOISE_IDX = 7 # float
+POSITION_X_IDX = 8 # float
+POSITION_Y_IDX = 9 # float
+SPEED_IDX = 10 # float
+COLLISION_OTHER_IDX = 11 # float
+COLLISION_PEDESTRIAN_IDX = 12 # float
+COLLISION_CAR_IDX = 13 # float
+OPPOSITE_LANE_INTER_IDX = 14 # float
+SIDEWALK_INTERSECT_IDX = 15 # float
+ACCELERATION_X_IDX = 16 #float
+ACCELERATION_Y_IDX = 17 # float
+ACCELERATION_Z_IDX = 18 # float
+PLATFORM_TIME_IDX = 19 # float
+GAME_TIME_IDX = 20 # float
+ORIENTATION_X_IDX = 21 # float
+ORIENTATION_Y_IDX = 22 # float
+ORIENTATION_Z_IDX = 23 # float
+HIGH_LEVEL_COMMAND_IDX = 24 # int ( 2 Follow lane, 3 Left, 4 Right, 5 Straight)
+NOISE_IDX = 25 #, Boolean # ( If the noise, perturbation, is activated, (Not Used) )
+CAMERA_IDX = 26 # (Which camera was used)
+ANGLE_IDX = 27 # (The yaw angle for this camera)
 
 ### CONSTANTS ###
 
-HI_LVL_CMD_IDX = 24
 STEERING_ANGLE_IDX = 0
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
-
-
 
 def show_image(sample, trans_en=False):
     '''
@@ -66,8 +62,8 @@ def show_image(sample, trans_en=False):
         img = sample['data']
 
     # magic 24 is the position of the high level command in the target array
-    print(COMMAND_DICT[int(sample['targets'][HI_LVL_CMD_IDX])])
-    high_level_command = COMMAND_DICT[int(sample['targets'][HI_LVL_CMD_IDX])]
+    print(COMMAND_DICT[int(sample['targets'][HIGH_LEVEL_COMMAND_IDX])])
+    high_level_command = COMMAND_DICT[int(sample['targets'][HIGH_LEVEL_COMMAND_IDX])]
 
     # magic 0 is the position of the high level command in the target array
     steering_angle = sample['targets'][STEERING_ANGLE_IDX]
@@ -85,8 +81,6 @@ def show_image(sample, trans_en=False):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-
-
 class H5Dataset(Dataset):
     '''
     from on data_06398.h5 ALL h5 files have 4 keys instead of 2!
@@ -98,30 +92,30 @@ class H5Dataset(Dataset):
         self.root_dir = root_dir
         self.transform = transform
 
+        self.file_names = sorted(os.listdir(self.root_dir))
         self.file_idx = 0
 
     def __len__(self):
-        return len(os.listdir(self.root_dir))
-
+        return len(file_names)*IMAGES_PER_FILE
 
     def __getitem__(self, idx):
-        file_names =  sorted(os.listdir(self.root_dir))
+        self.file_names =  sorted(os.listdir(self.root_dir))
 
         # The input idx seems sequential but we're actually going through the
         # images in each file and going through all the files in order.
         # Note: Danger! This >>WILL<< break, if any h5 file doesn't have
         # >>EXACTLY<< 200 images
-        file_idx = int(idx / 200)
-        idx = idx % 200
+        file_idx = int(idx / IMAGES_PER_FILE)
+        idx = idx % IMAGES_PER_FILE
 
         # print("Idx: {}, Type: {}".format(idx, type(idx)))  # TODO: Remove me
-        f = h5py.File(self.root_dir + '/' + file_names[file_idx], 'r')
+        f = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
 
         # for magic idx numers inspect class description
         data = f['rgb']
         targets = f['targets']
-        sample = {'filename' : file_names[file_idx],
-                     'data' : data[idx], 'targets' : targets[idx]}
+        sample = {'filename' : self.file_names[file_idx],
+                  'data' : data[idx], 'targets' : targets[idx]}
 
         if self.transform:
             sample['data'] = self.transform(sample['data'])
