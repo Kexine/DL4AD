@@ -51,10 +51,10 @@ def show_image(sample, trans_en=False):
     # show image with bigger resolution, does not affect the actual data
     res = cv2.resize(img,(4*width, 5*height), interpolation = cv2.INTER_CUBIC)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(res,'Cmd: {}'.format(high_level_command),(5,15 ), font, 0.5,(0,0,255),1,cv2.LINE_AA)
-    cv2.putText(res,'St: {:.5f}'.format(steering_angle),(5,30 ), font, 0.5,(0,0,255),1,cv2.LINE_AA)
+    cv2.putText(res,'Command: {}'.format(high_level_command),(5,15 ), font, 0.5,(0,0,255),1,cv2.LINE_AA)
+    cv2.putText(res,'Steering: {:.5f}'.format(steering_angle),(5,30 ), font, 0.5,(0,0,255),1,cv2.LINE_AA)
 
-    cv2.imshow("File: {}| Command: {}| Steering Angle: {}"
+    cv2.imshow("File: {}| Command: {}| Steering Angle: {:.5f}"
     .format(sample['filename'],  high_level_command,steering_angle),res)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -83,33 +83,42 @@ class H5Dataset(Dataset):
         # for magic idx numers inspect class description
         data = f[keys[-2]]
         targets = f[keys[-1]]
-
         sample = {'filename' : file_names[idx[0]],
                      'data' : data[idx[-1]], 'targets' : targets[idx[-1]]}
+
         if self.transform:
             sample['data'] = self.transform(sample['data'])
-
         return sample
 
 # dummy composition for debugging
 composed = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
 # composed = None
+
 train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=composed)
 
-train_loader = torch.utils.data.DataLoader(train_set,batch_size=1, shuffle=True, pin_memory=False)
+train_loader = torch.utils.data.DataLoader(train_set,batch_size=32, shuffle=True, pin_memory=False)
 
-
-
-no_trans_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=None)
-no_trans_sample = no_trans_set[(0,0)]
-
-sample = train_set[(0,0)]
+file_idx, image_idx = random.randrange(0,len(train_set)), random.randrange(0,200)
+sample = train_set[file_idx,image_idx]
 
 show_image(sample, True)
 
 
 # TODO: dataset so anpassen, dass die pytorch collate fn arbeiten kann!
+# wofür brauch ich next iter überhaupt?
 print(next(iter(train_loader)))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ''' Code Dumpster '''
