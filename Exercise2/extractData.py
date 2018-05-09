@@ -10,23 +10,48 @@ import matplotlib.pyplot as plt
 import os, os.path
 import random
 
-# Ignore warnings
 import warnings
+# Ignore warnings
 warnings.filterwarnings("ignore")
 
-command_dict =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
-def imshow(inp, title=None):
-    """Imshow for Tensor."""
-    plt.figure()
-    inp = inp.numpy().transpose((1, 2, 0))
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
-    inp = std * inp + mean
-    inp = np.clip(inp, 0, 1)
-    plt.imshow(inp)
-    if title is not None:
-        plt.title(title)
-    plt.pause(0.001)  # pause a bit so that plots are updated
+
+'''
+# Target Array
+# 1. Steer, float
+# 2. Gas, float
+# 3. Brake, float
+# 4. Hand Brake, boolean
+# 5. Reverse Gear, boolean
+# 6. Steer Noise, float
+# 7. Gas Noise, float
+# 8. Brake Noise, float
+# 9. Position X, float
+# 10. Position Y, float
+# 11. Speed, float
+# 12. Collision Other, float
+# 13. Collision Pedestrian, float
+# 14. Collision Car, float
+# 15. Opposite Lane Inter, float
+# 16. Sidewalk Intersect, float
+# 17. Acceleration X,float
+# 18. Acceleration Y, float
+# 19. Acceleration Z, float
+# 20. Platform time, float
+# 21. Game Time, float
+# 22. Orientation X, float
+# 23. Orientation Y, float
+# 24. Orientation Z, float
+# 25. High level command, int ( 2 Follow lane, 3 Left, 4 Right, 5 Straight)
+# 26. Noise, Boolean ( If the noise, perturbation, is activated, (Not Used) )
+# 27. Camera (Which camera was used)
+# 28. Angle (The yaw angle for this camera)
+'''
+
+### CONSTANTS ###
+
+HI_LVL_CMD_IDX = 24
+STEERING_ANGLE_IDX = 0
+COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
 
 
@@ -41,10 +66,11 @@ def show_image(sample, trans_en=False):
         img = sample['data']
 
     # magic 24 is the position of the high level command in the target array
-    high_level_command = command_dict[int(sample['targets'][24])]
+    print(COMMAND_DICT[int(sample['targets'][HI_LVL_CMD_IDX])])
+    high_level_command = COMMAND_DICT[int(sample['targets'][HI_LVL_CMD_IDX])]
 
     # magic 0 is the position of the high level command in the target array
-    steering_angle = sample['targets'][0]
+    steering_angle = sample['targets'][STEERING_ANGLE_IDX]
 
     height, width = img.shape[:2]
 
@@ -78,35 +104,50 @@ class H5Dataset(Dataset):
 
     def __getitem__(self, idx):
         file_names =  sorted(os.listdir(self.root_dir))
-        f = h5py.File(self.root_dir + '/' + file_names[idx[0]], 'r')
-        keys = list(f.keys())
+
+        #if isinstance(idx, tuple):
+        #    idx = idx[0]
+
+        print("Idx: {}, Type: {}".format(idx, type(idx)))
+        f = h5py.File(self.root_dir + '/' + file_names[idx], 'r')
+
         # for magic idx numers inspect class description
-        data = f[keys[-2]]
-        targets = f[keys[-1]]
-        sample = {'filename' : file_names[idx[0]],
+        data = f['rgb']
+        targets = f['targets']
+        sample = {'filename' : file_names[idx],
                      'data' : data[idx[-1]], 'targets' : targets[idx[-1]]}
 
         if self.transform:
             sample['data'] = self.transform(sample['data'])
         return sample
 
-# dummy composition for debugging
-composed = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
-# composed = None
-
-train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=composed)
-
-train_loader = torch.utils.data.DataLoader(train_set,batch_size=32, shuffle=True, pin_memory=False)
-
-file_idx, image_idx = random.randrange(0,len(train_set)), random.randrange(0,200)
-sample = train_set[file_idx,image_idx]
-
-show_image(sample, True)
 
 
-# TODO: dataset so anpassen, dass die pytorch collate fn arbeiten kann!
-# wofür brauch ich next iter überhaupt?
-print(next(iter(train_loader)))
+
+if  __name__=="__main__":
+
+    ### PSEUDO MAIN ###
+
+    # dummy composition for debugging
+    composed = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
+    # composed = None
+
+    train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=composed)
+
+    train_loader = torch.utils.data.DataLoader(train_set,batch_size=32, shuffle=True, pin_memory=False)
+
+    # if no index given, generate random index pair
+    file_idx, image_idx = random.randrange(0,len(train_set)), random.randrange(0,200)
+
+
+    sample = train_set[file_idx,image_idx]
+    # show_image(sample, not False)
+
+
+    # TODO: dataset so anpassen, dass die pytorch collate fn arbeiten kann!
+    # wofür brauch ich next iter überhaupt?
+
+    print(next(iter(train_loader)))
 
 
 
@@ -141,7 +182,7 @@ print(next(iter(train_loader)))
 
 # image_file = dataset[file_idx]
 # print(image_file['targets'][image_idx][24])
-# high_level_command = command_dict[int(image_file['targets'][image_idx][24])]
+# high_level_command = COMMAND_DICT[int(image_file['targets'][image_idx][24])]
 # steering_angle = image_file['targets'][image_idx][0]
 # img = image_file['data'][image_idx]
 
@@ -191,3 +232,18 @@ print(next(iter(train_loader)))
 # cv2.imshow('03663',rgb_data[1])
 # cv2.waitKey(0)
 # cv2.destroyAllWindows()
+
+
+#
+# def imshow(inp, title=None):
+#     """Imshow for Tensor."""
+#     plt.figure()
+#     inp = inp.numpy().transpose((1, 2, 0))
+#     mean = np.array([0.485, 0.456, 0.406])
+#     std = np.array([0.229, 0.224, 0.225])
+#     inp = std * inp + mean
+#     inp = np.clip(inp, 0, 1)
+#     plt.imshow(inp)
+#     if title is not None:
+#         plt.title(title)
+#     plt.pause(0.001)  # pause a bit so that plots are updated
