@@ -96,7 +96,7 @@ class H5Dataset(Dataset):
         self.file_idx = 0
 
     def __len__(self):
-        return len(file_names)*IMAGES_PER_FILE
+        return len(self.file_names)*IMAGES_PER_FILE
 
     def __getitem__(self, idx):
         self.file_names =  sorted(os.listdir(self.root_dir))
