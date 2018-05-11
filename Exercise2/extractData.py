@@ -93,6 +93,8 @@ class H5Dataset(Dataset):
         self.transform = transform
 
         self.file_names = sorted(os.listdir(self.root_dir))
+        print(self.file_names)
+        print(len(self.file_names))
         self.file_idx = 0
 
     def __len__(self):
@@ -105,6 +107,7 @@ class H5Dataset(Dataset):
         # images in each file and going through all the files in order.
         # Note: Danger! This >>WILL<< break, if any h5 file doesn't have
         # >>EXACTLY<< 200 images
+        raw_idx = idx
         file_idx = int(idx / IMAGES_PER_FILE)
         idx = idx % IMAGES_PER_FILE
 
@@ -135,7 +138,7 @@ if  __name__=="__main__":
     train_loader = torch.utils.data.DataLoader(train_set,batch_size=32, shuffle=True, pin_memory=False)
 
     # if no index given, generate random index pair
-    idx = random.randrange(0,len(train_set)*random.randrange(0,200))
+    idx = random.randrange(0,len(train_set))
 
     sample = train_set[idx]
     show_image(sample, not False)
