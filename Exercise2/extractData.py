@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import os, os.path
 import random
 
+from customTransforms import SaltNPepper
+
 import warnings
 # Ignore warnings
 warnings.filterwarnings("ignore")
@@ -130,7 +132,9 @@ if  __name__=="__main__":
     ### PSEUDO MAIN ###
 
     # dummy composition for debugging
-    composed = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
+    composed = transforms.Compose([transforms.ToTensor(),
+                                   transforms.Normalize((0.1307,), (0.3081,)),
+                                   SaltNPepper(0.5)])
     # composed = None
 
     train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=composed)
@@ -148,102 +152,3 @@ if  __name__=="__main__":
     # wofür brauch ich next iter überhaupt?
 
     print(next(iter(train_loader)))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-''' Code Dumpster '''
-
-# show random image if not specified
-# if idx is None:
-#     idx = (random.randrange(0, len(dataset),1), random.randrange(0, len(dataset[file_idx]['data']),1) )
-# # if file_idx is None:
-#     file_idx = random.randrange(0, len(dataset),1)
-# if image_idx is None:
-#     image_idx = random.randrange(0, len(dataset[file_idx]['data']),1)
-
-# check index input
-# assert (file_idx <= len(dataset)),"File idx must be smaller or equal to:\
-#         {}".format(len(dataset))
-# assert (image_idx <= len(dataset[file_idx]['data'])),\
-#         "image idx must be smaller or equal to: {}"\
-#         .format(len(dataset[file_idx]['data']))
-
-
-# image_file = dataset[file_idx]
-# print(image_file['targets'][image_idx][24])
-# high_level_command = COMMAND_DICT[int(image_file['targets'][image_idx][24])]
-# steering_angle = image_file['targets'][image_idx][0]
-# img = image_file['data'][image_idx]
-
-# print(sample['data'])
-
-
-
-# print(train_set[0])
-# show_image(train_set)
-
-#
-# print(type(train_set))
-# n = random.randrange(0, len(train_set),1)
-# # n = 2736
-# print("Length of training set: {}".format(len(train_set)))
-# foo = train_set[n]
-# print(60* '-')
-# print(60* '-')
-# print("extracted example from file with index {}:".format(n))
-# print(60* '-')
-# print(foo['filename'])
-# print(foo['data'])
-# print(foo['targets'])
-# print(60* '-')
-
-
-
-
-
-
-#
-#
-# # example access
-# #
-# f = h5py.File('AgentHuman/SeqTrain/data_03663.h5', 'r')
-#
-# rgb_data = f['rgb']
-# targets = f['targets']
-#
-# print("Keys in .h5 file: {}".format(list(f.keys())))
-# print("RGB shape:     {}    \
-# | Dtype: {}".format(rgb_data.shape, rgb_data.dtype))
-# print("Targets shape: {}            \
-# | Dtype: {}".format(targets.shape, targets.dtype))
-#
-#
-# cv2.imshow('03663',rgb_data[1])
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
-
-
-#
-# def imshow(inp, title=None):
-#     """Imshow for Tensor."""
-#     plt.figure()
-#     inp = inp.numpy().transpose((1, 2, 0))
-#     mean = np.array([0.485, 0.456, 0.406])
-#     std = np.array([0.229, 0.224, 0.225])
-#     inp = std * inp + mean
-#     inp = np.clip(inp, 0, 1)
-#     plt.imshow(inp)
-#     if title is not None:
-#         plt.title(title)
-#     plt.pause(0.001)  # pause a bit so that plots are updated
