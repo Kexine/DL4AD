@@ -9,8 +9,9 @@ from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import os, os.path
 import random
+import matplotlib.pyplot as plt
 
-from customTransforms import SaltNPepper, GaussianNoise
+from customTransforms import SaltNPepper, GaussianNoise, RegionDropout
 
 import warnings
 # Ignore warnings
@@ -53,6 +54,19 @@ ANGLE_IDX = 27 # (The yaw angle for this camera)
 STEERING_ANGLE_IDX = 0
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
+
+def matplot_display(sample):
+    """
+    gets an BGR image, converts it to RGB and displays it with matplotlib
+    maybe easier to handle than opencv?
+    """
+    img = sample['data'].numpy().transpose((1,2,0))
+    plt.figure()
+    plt.title("File: {}".format(sample['filename']))
+    # converg BGR to RGB
+    rgb = img[...,::-1]
+    plt.imshow(rgb)
+
 def show_image(sample, trans_en=False):
     '''
     sample: sampled image
@@ -63,15 +77,15 @@ def show_image(sample, trans_en=False):
     else:
         img = sample['data']
 
+
     # magic 24 is the position of the high level command in the target array
-    print(COMMAND_DICT[int(sample['targets'][HIGH_LEVEL_COMMAND_IDX])])
+    # print(COMMAND_DICT[int(sample['targets'][HIGH_LEVEL_COMMAND_IDX])])
     high_level_command = COMMAND_DICT[int(sample['targets'][HIGH_LEVEL_COMMAND_IDX])]
 
     # magic 0 is the position of the high level command in the target array
     steering_angle = sample['targets'][STEERING_ANGLE_IDX]
 
     height, width = img.shape[:2]
-
     # show image with bigger resolution, does not affect the actual data
     res = cv2.resize(img,(4*width, 5*height), interpolation = cv2.INTER_CUBIC)
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -95,8 +109,8 @@ class H5Dataset(Dataset):
         self.transform = transform
 
         self.file_names = sorted(os.listdir(self.root_dir))
-        print(self.file_names)
-        print(len(self.file_names))
+        # print(self.file_names)
+        # print(len(self.file_names))
         self.file_idx = 0
 
     def __len__(self):
@@ -135,21 +149,32 @@ if  __name__=="__main__":
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
                                    SaltNPepper(0.1),
-                                   GaussianNoise(0, 0.5)])
-    # composed = None
+                                   GaussianNoise(0, 0.1),RegionDropout(10, 10)])
+    un_composed = transforms.Compose([transforms.ToTensor()])
 
+    # composed = transforms.Compose([transforms.ToTensor(),
+    #                                RegionDropout(10, 10)])
     train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=composed)
 
     train_loader = torch.utils.data.DataLoader(train_set,batch_size=32, shuffle=True, pin_memory=False)
+
+    orig_train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=un_composed)
+
 
     # if no index given, generate random index pair
     idx = random.randrange(0,len(train_set))
 
     sample = train_set[idx]
-    show_image(sample, not False)
+    show_image(sample, True)
+    matplot_display(sample)
 
 
-    # TODO: dataset so anpassen, dass die pytorch collate fn arbeiten kann!
-    # wofür brauch ich next iter überhaupt?
+    orig_sample = orig_train_set[idx]
+    show_image(orig_sample, True)
+    matplot_display(orig_sample)
 
-    print(next(iter(train_loader)))
+    plt.show()
+
+
+
+    # print(next(iter(train_loader)))
