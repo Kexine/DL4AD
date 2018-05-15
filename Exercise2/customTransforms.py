@@ -36,3 +36,18 @@ class SaltNPepper(object):
 
         return img
 
+
+class GaussianNoise(object):
+    """Add Gaussian Noise to a tensor"""
+    def __init__(self, std, mean=0):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, img):
+        shape = img.shape
+        mean = torch.ones(shape) * self.mean
+        std = torch.ones(shape) * self.std
+
+        img = img + torch.normal(mean, std)
+
+        return img

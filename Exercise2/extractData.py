@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import os, os.path
 import random
 
-from customTransforms import SaltNPepper
+from customTransforms import SaltNPepper, GaussianNoise
 
 import warnings
 # Ignore warnings
@@ -134,7 +134,8 @@ if  __name__=="__main__":
     # dummy composition for debugging
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
-                                   SaltNPepper(0.5)])
+                                   SaltNPepper(0.1),
+                                   GaussianNoise(0, 0.5)])
     # composed = None
 
     train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=composed)
