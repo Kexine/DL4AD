@@ -74,7 +74,7 @@ class RegionDropout(object):
     def __init__(self, filter=10, num_regions=1):
 
         self.num_regions = num_regions
-
+        # check whether is tuple or integer
         if isinstance(filter, tuple):
             self.w_drop = filter[0]
             self.h_drop = filter[1]
@@ -127,5 +127,5 @@ class GaussianBlur(object):
         self.sigma = sigma
     def __call__(self, img):
         # apply gaussian filter and convert back to tensor
-        img = torch.from_numpy(gaussian_filter(img, self.sigma))
+        img = torch.from_numpy(gaussian_filter(img, self.sigma, mode='constant'))
         return img
