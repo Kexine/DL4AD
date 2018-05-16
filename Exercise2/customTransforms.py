@@ -3,6 +3,7 @@
 import numpy as np
 import random
 import torch
+from scipy.ndimage import gaussian_filter
 
 class SaltNPepper(object):
     """Insert some salt and pepper grain
@@ -83,36 +84,48 @@ class RegionDropout(object):
 
 
     def __call__(self, img):
-
         for n_regions in range(self.num_regions):
             channels = img.shape[0]
-            h_max = img.shape[2]
             w_max = img.shape[1]
+            h_max = img.shape[2]
+
+            # top left corner
             x_11 = random.randrange(0, w_max-self.w_drop)
             y_11 = random.randrange(0, h_max-self.h_drop)
 
+            # top right corner
             x_12 = x_11 + self.w_drop
             y_12 = y_11
 
+            # bottom right corner
             x_21 = x_11
             y_21 = y_11 + self.h_drop
 
+            # bottom right corner
             x_22 = x_11 + self.w_drop
             y_22 = y_11 + self.h_drop
 
-            # print("Left top", x_11,y_11)
-            # print("Right top", x_12,y_12)
-            # print("Left bot", x_21,y_21)
-            # print("Right bot", x_22,y_22)
-
+            # create masks in x and y direction
             mask_x = np.linspace(x_11,x_12,num=x_12-x_11,endpoint=False,dtype=int)
             mask_y = np.linspace(y_11,y_21,num=y_21-y_11,endpoint=False,dtype=int)
-            # print("x mask",mask_x.shape)
-            # print("y mask",mask_y)
 
+            # apply mask on every channel
             for c in range(channels):
+                # apply mask in x direction
                 for x in mask_x:
+                    # apply mask in y direction
                     for y in mask_y:
+                        # multiply with 0 to make pixel black
                         img[c][x][y] *= 0
 
+        return img
+
+
+class GaussianBlur(object):
+    """Convolutes image with gaussian kernel"""
+    def __init__(self, sigma = 0.5):
+        self.sigma = sigma
+    def __call__(self, img):
+        # apply gaussian filter and convert back to tensor
+        img = torch.from_numpy(gaussian_filter(img, self.sigma))
         return img

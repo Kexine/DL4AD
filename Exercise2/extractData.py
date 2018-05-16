@@ -11,7 +11,7 @@ import os, os.path
 import random
 import matplotlib.pyplot as plt
 
-from customTransforms import SaltNPepper, GaussianNoise, RegionDropout
+from customTransforms import SaltNPepper, GaussianNoise, RegionDropout, GaussianBlur
 
 import warnings
 # Ignore warnings
@@ -148,12 +148,11 @@ if  __name__=="__main__":
     # dummy composition for debugging
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
-                                   SaltNPepper(0.1),
-                                   GaussianNoise(0, 0.1),RegionDropout(10, 10)])
+                                   GaussianBlur(1.5), SaltNPepper(0.1),
+                                   GaussianNoise(0, 0.1),RegionDropout((10, 10),10)])
     un_composed = transforms.Compose([transforms.ToTensor()])
 
-    # composed = transforms.Compose([transforms.ToTensor(),
-    #                                RegionDropout(10, 10)])
+
     train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=composed)
 
     train_loader = torch.utils.data.DataLoader(train_set,batch_size=32, shuffle=True, pin_memory=False)
@@ -165,12 +164,12 @@ if  __name__=="__main__":
     idx = random.randrange(0,len(train_set))
 
     sample = train_set[idx]
-    show_image(sample, True)
+    # show_image(sample, True)
     matplot_display(sample)
 
 
     orig_sample = orig_train_set[idx]
-    show_image(orig_sample, True)
+    # show_image(orig_sample, True)
     matplot_display(orig_sample)
 
     plt.show()
