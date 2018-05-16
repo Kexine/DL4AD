@@ -11,3 +11,6 @@ Deep Learning for Autonomous Driving - Summer Semester 2018, Freiburg
     - [X] Gaussian Blur
     - [X] Region dropout
 - [ ] GUI control
+- [ ] Report
+    - [ ] GUI dontrol documentation
+    - [ ] GUI Screenshot
