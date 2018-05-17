@@ -23,16 +23,20 @@ class ImageBrowser:
 
         self.side_by_side = None
 
-    # def draw_arrow(self, verbose_cmd):
-    #     print(verbose_cmd)
-    #     if verbose_cmd=="Straight":
-    #         return plt.arrow(100,44,0,-10, width = 1, color='r')
-    #     if verbose_cmd=="Follow Lane":
-    #         return plt.arrow(100,44,0,-10, width = 1, color='r')
-    #     if verbose_cmd=="Right":
-    #         return plt.arrow(100,44,20,0, width = 1, color='r')
-    #     if verbose_cmd=="Left":
-    #         return plt.arrow(100,44,-20,0, width = 1, color='r')
+        self.HIGH_LEVEL_COMMAND_IDX = 24
+
+    def draw_arrow(self, cmd):
+        COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
+        verbose_cmd = COMMAND_DICT[cmd]
+        print(verbose_cmd)
+        if verbose_cmd=="Straight":
+            return plt.arrow(300,44,0,-10, width = 1, color='r')
+        if verbose_cmd=="Follow Lane":
+            return plt.arrow(300,44,0,-10, width = 1, color='r')
+        if verbose_cmd=="Right":
+            return plt.arrow(300,44,20,0, width = 1, color='r')
+        if verbose_cmd=="Left":
+            return plt.arrow(300,44,-20,0, width = 1, color='r')
 
 
     def process_key(self, event):
@@ -49,16 +53,11 @@ class ImageBrowser:
             return
 
         # replot
+        plt.clf()
         self.create_sidebyside()
         plt.imshow(self.create_sidebyside())
         plt.title("File: {}| Image {}".format(self.dataset1[self.idx]['filename'], self.idx%200 ))
-
-
-        # COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
-        # STEER_IDX = 0
-        # HIGH_LEVEL_COMMAND_IDX = 24
-        # verbose_cmd = self.dataset1[self.idx]['targets'][HIGH_LEVEL_COMMAND_IDX]
-        # self.draw_arrow(verbose_cmd)
+        self.draw_arrow(self.dataset1[self.idx]['targets'][self.HIGH_LEVEL_COMMAND_IDX])
         plt.draw()
 
     def create_sidebyside(self):
@@ -69,7 +68,6 @@ class ImageBrowser:
                          dim = 2).numpy().transpose((1,2,0))
 
     def show(self):
-        # plt.figure()
         plt.imshow(self.create_sidebyside())
         plt.connect('key_press_event', self.process_key)
 
