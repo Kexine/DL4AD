@@ -24,21 +24,24 @@ class ImageBrowser:
 
         self.side_by_side = None
 
+        self.scaling_factor = 1.5
+
     def process_key(self, event):
         if event.key == 'left' or event.key == 'down':
             self.idx = max(self.idx - 1, 0)
         elif event.key == 'right' or event.key == 'up':
             self.idx = min(self.idx + 1, len(self.dataset1))
         elif event.key == 'r':
-            self.idx = random.randrange(0, len(dataset1))
+            self.idx = random.randrange(0, len(self.dataset1))
             print("New Index: {}".format(self.idx))
-        elif event.key == 'f10' or event.key == 'q':
-            plt.close()
+        elif event.key == '+':
+            self.scaling_factor += 0.1
+        elif event.key == '-':
+            self.scaling_factor -= 0.1
         else:
             return
 
         # replot
-        self.create_sidebyside()
         plt.imshow(self.create_sidebyside())
 
         plt.draw()
@@ -46,6 +49,11 @@ class ImageBrowser:
     def create_sidebyside(self):
         img1 = self.dataset1[self.idx]['data']
         img2 = self.dataset2[self.idx]['data']
+        result = torch.cat((img1, img2),
+                         dim = 2).numpy() # .transpose((1,2,0))
+
+        result = torch.cat((img1, img2),
+                         dim = 2).numpy().transpose((1,2,0))
 
         return torch.cat((img1, img2),
                          dim = 2).numpy().transpose((1,2,0))
@@ -55,3 +63,5 @@ class ImageBrowser:
         plt.connect('key_press_event', self.process_key)
 
         plt.show()
+
+        return
