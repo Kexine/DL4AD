@@ -56,7 +56,7 @@ class ImageBrowser:
 
         # replot
         plt.clf()
-        plt.imshow(self.create_sidebyside())
+        plt.imshow(self.create_sidebyside(), interpolation='nearest')
         plt.title("File: {}| Image {}".format(self.dataset1[self.idx]['filename'], self.idx%200 ))
         self.draw_arrow(self.dataset1[self.idx]['targets'][self.HIGH_LEVEL_COMMAND_IDX])
 
@@ -75,7 +75,7 @@ class ImageBrowser:
                          dim = 2).numpy().transpose((1,2,0))
 
     def show(self):
-        plt.imshow(self.create_sidebyside())
+        plt.imshow(self.create_sidebyside()), interpolation='nearest')
         plt.connect('key_press_event', self.process_key)
 
         plt.show()
