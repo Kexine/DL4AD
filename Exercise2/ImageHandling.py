@@ -56,30 +56,39 @@ class ImageBrowser:
         elif event.key == 'r':
             self.idx = random.randrange(0, len(self.dataset1))
             print("New Index: {}".format(self.idx))
-        elif event.key == 'f10' or event.key == 'q':
-            plt.close()
+        elif event.key == '+':
+            self.scaling_factor += 0.1
+        elif event.key == '-':
+            self.scaling_factor -= 0.1
         else:
             return
 
         # replot
         plt.clf()
-        self.create_sidebyside()
-        plt.imshow(self.create_sidebyside())
         self.make_title()
         self.draw_arrow(self.dataset1[self.idx]['targets'][self.HIGH_LEVEL_COMMAND_IDX])
+        plt.imshow(self.create_sidebyside(), interpolation='nearest')
+
         plt.draw()
 
     def create_sidebyside(self):
         img1 = self.dataset1[self.idx]['data']
         img2 = self.dataset2[self.idx]['data']
+        result = torch.cat((img1, img2),
+                         dim = 2).numpy() # .transpose((1,2,0))
+
+        result = torch.cat((img1, img2),
+                         dim = 2).numpy().transpose((1,2,0))
 
         return torch.cat((img1, img2),
                          dim = 2).numpy().transpose((1,2,0))
 
     def show(self):
         self.make_title()
-        plt.imshow(self.create_sidebyside())
+        plt.imshow(self.create_sidebyside(), interpolation='nearest')
         self.draw_arrow(self.dataset1[self.idx]['targets'][self.HIGH_LEVEL_COMMAND_IDX])
         plt.connect('key_press_event', self.process_key)
 
         plt.show()
+
+        return

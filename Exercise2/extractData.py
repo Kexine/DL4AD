@@ -177,10 +177,6 @@ if  __name__=="__main__":
     # g = PrimitiveGUI()
     # g(train_set, orig_train_set)
 
-    # browser = ImageBrowser(train_set, orig_train_set)
-
-    # browser.show()
-
     # if no index given, generate random index pair
     # idx = random.randrange(0,len(train_set))
 
