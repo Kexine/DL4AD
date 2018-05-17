@@ -64,8 +64,6 @@ class GaussianNoise(object):
         return img
 
 
-
-
 class RegionDropout(object):
     """Random Region Droput with roughly 1% of image size
     integer: filter size squared, e.g. 3 -> 3x3
@@ -129,3 +127,13 @@ class GaussianBlur(object):
         # apply gaussian filter and convert back to tensor
         img = torch.from_numpy(gaussian_filter(img, self.sigma, mode='constant'))
         return img
+
+
+class ContrastNBrightness(object):
+    """Change contrast and brightness of an image"""
+    def __init__(self, alpha, beta):
+        self.alpha = alpha
+        self.beta = beta
+
+    def __call__(self, img):
+        return img * self.alpha + torch.ones(img.shape)*self.beta

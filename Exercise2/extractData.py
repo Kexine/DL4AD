@@ -11,7 +11,12 @@ import os, os.path
 import random
 import matplotlib.pyplot as plt
 
-from customTransforms import SaltNPepper, GaussianNoise, RegionDropout, GaussianBlur
+from customTransforms import *
+
+from FallbackGUI import PrimitiveGUI
+from ImageHandling import ImageBrowser
+
+# from ImageHandling import ImageBrowser
 
 import warnings
 # Ignore warnings
@@ -92,8 +97,11 @@ def show_image(sample, trans_en=False):
     cv2.putText(res,'Command: {}'.format(high_level_command),(5,15 ), font, 0.5,(0,0,255),1,cv2.LINE_AA)
     cv2.putText(res,'Steering: {:.5f}'.format(steering_angle),(5,30 ), font, 0.5,(0,0,255),1,cv2.LINE_AA)
 
-    cv2.imshow("File: {}| Command: {}| Steering Angle: {:.5f}"
-    .format(sample['filename'],  high_level_command,steering_angle),res)
+    img_title = "File: {}| Command: {}| Steering Angle: {:.5f}".format(sample['filename'],
+                                                                       high_level_command,
+                                                                       steering_angle)
+    cv2.imshow(img_title,
+               res)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -148,8 +156,12 @@ if  __name__=="__main__":
     # dummy composition for debugging
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
-                                   GaussianBlur(1.5), SaltNPepper(0.1),
-                                   GaussianNoise(0, 0.1),RegionDropout((10, 10),10)])
+                                   ContrastNBrightness(1.5,0.5),
+                                   GaussianBlur(1.5),
+                                   SaltNPepper(0.1),
+                                   GaussianNoise(0, 0.1),
+                                   RegionDropout((10, 10),10)
+    ])
     un_composed = transforms.Compose([transforms.ToTensor()])
 
 
@@ -159,20 +171,28 @@ if  __name__=="__main__":
 
     orig_train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=un_composed)
 
+    browser = ImageBrowser(train_set, orig_train_set)
+    browser.show()
+
+    # g = PrimitiveGUI()
+    # g(train_set, orig_train_set)
+
+    # browser = ImageBrowser(train_set, orig_train_set)
+
+    # browser.show()
 
     # if no index given, generate random index pair
-    idx = random.randrange(0,len(train_set))
+    # idx = random.randrange(0,len(train_set))
 
-    sample = train_set[idx]
+    # sample = train_set[idx]
     # show_image(sample, True)
-    matplot_display(sample)
+    # matplot_display(sample)
 
+    # orig_sample = orig_train_set[idx]
+    # # show_image(orig_sample, True)
+    # matplot_display(orig_sample)
 
-    orig_sample = orig_train_set[idx]
-    # show_image(orig_sample, True)
-    matplot_display(orig_sample)
-
-    plt.show()
+    # plt.show()
 
 
 
