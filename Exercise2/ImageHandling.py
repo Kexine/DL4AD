@@ -18,13 +18,26 @@ class ImageBrowser:
         if idx is None:
             idx = random.randrange(0, len(dataset1))
         self.idx = idx
-
         self.dataset1 = dataset1
         self.dataset2 = dataset2
 
         self.side_by_side = None
 
-        self.scaling_factor = 1.5
+        self.HIGH_LEVEL_COMMAND_IDX = 24
+
+    def draw_arrow(self, cmd):
+        COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
+        verbose_cmd = COMMAND_DICT[cmd]
+        print(verbose_cmd)
+        if verbose_cmd=="Straight":
+            return plt.arrow(300,44,0,-10, width = 1, color='r')
+        if verbose_cmd=="Follow Lane":
+            return plt.arrow(300,44,0,-10, width = 1, color='r')
+        if verbose_cmd=="Right":
+            return plt.arrow(300,44,20,0, width = 1, color='r')
+        if verbose_cmd=="Left":
+            return plt.arrow(300,44,-20,0, width = 1, color='r')
+
 
     def process_key(self, event):
         if event.key == 'left' or event.key == 'down':
@@ -42,7 +55,10 @@ class ImageBrowser:
             return
 
         # replot
+        plt.clf()
         plt.imshow(self.create_sidebyside())
+        plt.title("File: {}| Image {}".format(self.dataset1[self.idx]['filename'], self.idx%200 ))
+        self.draw_arrow(self.dataset1[self.idx]['targets'][self.HIGH_LEVEL_COMMAND_IDX])
 
         plt.draw()
 
