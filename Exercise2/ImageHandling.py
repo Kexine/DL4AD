@@ -24,6 +24,15 @@ class ImageBrowser:
         self.side_by_side = None
 
         self.HIGH_LEVEL_COMMAND_IDX = 24
+        self.STEER_IDX = 0
+
+    def make_title(self):
+        filename = self.dataset1[self.idx]['filename']
+        image_idx =  self.idx%200
+        st_angle = self.dataset1[self.idx]['targets'][self.STEER_IDX]
+        return plt.title("File: {}| Image {}| Steering Angle: {:.4f}".format(
+                    filename, image_idx, st_angle))
+
 
     def draw_arrow(self, cmd):
         COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
@@ -32,7 +41,7 @@ class ImageBrowser:
         if verbose_cmd=="Straight":
             return plt.arrow(300,44,0,-10, width = 1, color='r')
         if verbose_cmd=="Follow Lane":
-            return plt.arrow(300,44,0,-10, width = 1, color='r')
+            return #plt.arrow(300,44,0,-10, width = 1, color='r')
         if verbose_cmd=="Right":
             return plt.arrow(300,44,20,0, width = 1, color='r')
         if verbose_cmd=="Left":
@@ -56,7 +65,7 @@ class ImageBrowser:
         plt.clf()
         self.create_sidebyside()
         plt.imshow(self.create_sidebyside())
-        plt.title("File: {}| Image {}".format(self.dataset1[self.idx]['filename'], self.idx%200 ))
+        self.make_title()
         self.draw_arrow(self.dataset1[self.idx]['targets'][self.HIGH_LEVEL_COMMAND_IDX])
         plt.draw()
 
@@ -68,7 +77,9 @@ class ImageBrowser:
                          dim = 2).numpy().transpose((1,2,0))
 
     def show(self):
+        self.make_title()
         plt.imshow(self.create_sidebyside())
+        self.draw_arrow(self.dataset1[self.idx]['targets'][self.HIGH_LEVEL_COMMAND_IDX])
         plt.connect('key_press_event', self.process_key)
 
         plt.show()

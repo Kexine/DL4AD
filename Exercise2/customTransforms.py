@@ -38,7 +38,6 @@ class SaltNPepper(object):
             salt_mask = torch.cat((salt_mask,salt_mask,salt_mask), dim=0)
             pepper_mask = torch.cat((pepper_mask,pepper_mask,pepper_mask), dim=0)
 
-        print("Shape mask: {}, Shape img: {}".format(salt_mask.shape, img.shape))
 
         # apply salt
         img.masked_scatter_(salt_mask.byte(), salt_mask)
