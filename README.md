@@ -5,12 +5,13 @@ Deep Learning for Autonomous Driving - Summer Semester 2018, Freiburg
 ## Stuff on the agenda
 
 - [X] Data loading
-- [ ] Data augmentation
+- [X] Data augmentation
+    - [X] Change in tone, brightness and contrast
     - [X] Salt and Pepper filter
     - [X] Gaussian Noise
     - [X] Gaussian Blur
     - [X] Region dropout
-- [ ] GUI control
-- [ ] Report
-    - [ ] GUI dontrol documentation
-    - [ ] GUI Screenshot
+- [X] GUI control
+- [X] Report
+    - [X] GUI dontrol documentation
+    - [X] GUI Screenshot
