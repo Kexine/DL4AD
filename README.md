@@ -15,3 +15,25 @@ Deep Learning for Autonomous Driving - Summer Semester 2018, Freiburg
 - [X] Report
     - [X] GUI dontrol documentation
     - [X] GUI Screenshot
+
+
+
+# Exercise 3
+- [X] Implement Network Architecture
+    - [X] Command Input
+    - [X] Branched
+    
+- [ ] try pooling
+    - [ ] max pooling
+    - [ ] no pooling
+    
+- [ ] Experiments
+    - [ ] Non-Augmented Data
+        - [ ] Command Input
+        - [ ] Branched
+    - [ ] Augmented Data
+        - [ ] Command Input
+        - [ ] Branched
+    - Non-Conditional Network
+        - [ ] Command Input
+        - [ ] Branched
