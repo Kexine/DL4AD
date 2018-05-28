@@ -22,6 +22,8 @@ import warnings
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
+DATA_DIR = '../data/AgentHuman'
+
 IMAGES_PER_FILE = 200
 
 # Target Array indices
@@ -165,11 +167,11 @@ if  __name__=="__main__":
     un_composed = transforms.Compose([transforms.ToTensor()])
 
 
-    train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=composed)
+    train_set = H5Dataset(root_dir = DATA_DIR + '/SeqTrain', transform=composed)
 
     train_loader = torch.utils.data.DataLoader(train_set,batch_size=32, shuffle=True, pin_memory=False)
 
-    orig_train_set = H5Dataset(root_dir = 'AgentHuman/SeqTrain', transform=un_composed)
+    orig_train_set = H5Dataset(root_dir = DATA_DIR + '/SeqTrain', transform=un_composed)
 
     browser = ImageBrowser(train_set, orig_train_set)
     browser.show()
