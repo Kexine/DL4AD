@@ -34,6 +34,8 @@ Deep Learning for Autonomous Driving - Summer Semester 2018, Freiburg
     - [ ] Augmented Data
         - [ ] Command Input
         - [ ] Branched
-    - Non-Conditional Network
+    - [ ] Non-Conditional Network
         - [ ] Command Input
         - [ ] Branched
+
+- [ ] Report
