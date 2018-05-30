@@ -276,8 +276,8 @@ class Net(nn.Module):
 
         ####for  measurement(speed)#########
         m = self.fc3(m)
-        x= self.fc_drop(x)
-        x = relu(x)
+        m= self.fc_drop(m)
+        m = relu(m)
 
         m = self.fc4(m)
         m = self.fc_drop(m)
