@@ -161,7 +161,12 @@ class H5Dataset(Dataset):
                   'targets' : targets[idx]}
 
         if self.transform:
-            sample['data'] = self.transform(sample['data'])
+            sample = (self.transform(data[idx]),
+                      torch.Tensor(targets[idx]))
+        else:
+            sample = (data[idx],
+                      targets[idx])
+
         return sample
 
 
@@ -345,13 +350,13 @@ if  __name__=="__main__":
     un_composed = transforms.Compose([transforms.ToTensor()])
 
 
-    train_set = H5Dataset(root_dir = 'Agenthuman', transform=un_composed)
+    train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=64, # TODO: Decide on batchsize
                                                shuffle=True,
                                                pin_memory=False)
 
-    orig_train_set = H5Dataset(root_dir = 'Agenthuman', transform=un_composed)
+    orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
 
     model = Net().to(device)
 
