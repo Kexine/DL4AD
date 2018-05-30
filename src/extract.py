@@ -33,7 +33,8 @@ import torch.optim as optim
 
 import warnings
 torch.manual_seed(1)
-device = torch.device("cuda")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
@@ -149,21 +150,18 @@ class H5Dataset(Dataset):
         file_idx = int(idx / IMAGES_PER_FILE)
         idx = idx % IMAGES_PER_FILE
 
+        # print("Idx: {}, Type: {}".format(idx, type(idx)))  # TODO: Remove me
         f = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
 
         # for magic idx numers inspect class description
         data = f['rgb']
         targets = f['targets']
-        sample = (data[idx],
-                  targets[idx])
+        sample = {'filename' : self.file_names[file_idx],
+                  'data' : data[idx],
+                  'targets' : targets[idx]}
 
         if self.transform:
-            sample = (self.transform(data[idx]),
-                      torch.Tensor(targets[idx]))
-        else:
-            sample = (data[idx],
-                      targets[idx])
-
+            sample['data'] = self.transform(sample['data'])
         return sample
 
 
@@ -313,7 +311,6 @@ class Net(nn.Module):
 def train(epoch, train_loader):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
-        print('type data: {}, type target: {}'.format(type(data), type(target)))
         # Move the input and target data on the GPU
         data, target = data.to(device), target.to(device)
         # Zero out gradients from previous step
@@ -350,13 +347,13 @@ if  __name__=="__main__":
     un_composed = transforms.Compose([transforms.ToTensor()])
 
 
-    train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
+    train_set = H5Dataset(root_dir = 'Agenthuman', transform=un_composed)
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=64,
                                                shuffle=True,
                                                pin_memory=False)
 
-    orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
+    orig_train_set = H5Dataset(root_dir = 'Agenthuman', transform=un_composed)
 
     model = Net().to(device)
 
