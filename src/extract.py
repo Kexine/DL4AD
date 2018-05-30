@@ -184,7 +184,6 @@ class Net(nn.Module):
         self.conv_drop = nn.Dropout2d(p=0.2)
         self.fc_drop = nn.Dropout2d(p=0.5)
 
-
         #batch normalisers for every convolution layer
         self.conv1_bn = nn.BatchNorm2d(32)
         self.conv2_bn = nn.BatchNorm2d(32)
@@ -194,7 +193,6 @@ class Net(nn.Module):
         self.conv6_bn = nn.BatchNorm2d(128)
         self.conv7_bn = nn.BatchNorm2d(256)
         self.conv8_bn = nn.BatchNorm2d(256)
-
 
         #2 fc layers for image module
         # self.fc1 = nn.Linear(204*92*256, 512) #(please reconfirm with team)
@@ -260,6 +258,7 @@ class Net(nn.Module):
         ###################################
 
         # x = x.view(-1, 204*92*256)      ### TODO: change this
+        print("Shape of x before view(): {}".format(x.shape))
         x = x.view(-1, 25*11*256)
 
         #########fully connected layers####
@@ -275,6 +274,7 @@ class Net(nn.Module):
         ####################################
 
         ####for  measurement(speed)#########
+        m = m.view(m.shape[0], -1)
         m = self.fc3(m)
         x= self.fc_drop(x)
         x = relu(x)
@@ -285,6 +285,7 @@ class Net(nn.Module):
         ####################################
 
         #########for control################
+        c = c.view(c.shape[0], -1)
         c = self.fc3(c)
         c = self.fc4(c)
 
@@ -299,7 +300,6 @@ class Net(nn.Module):
         j= self.fc_drop(j)
         j = relu(j)
 
-        j = torch.cat((x,m,c), 1)
         j = self.fc7(j)
         j = self.fc_drop(j)
         j = relu(j)
@@ -313,15 +313,15 @@ class Net(nn.Module):
 def train(epoch, train_loader):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
-        print('type data: {}, type target: {}'.format(type(data), type(target)))
+        # print('shape data: {}, shape target: {}'.format(data.shape, target.shape))
         # Move the input and target data on the GPU
         data, target = data.to(device), target.to(device)
         # Zero out gradients from previous step
         optimizer.zero_grad()
         # Forward pass of the neural net
         output = model(data,
-                       target[SPEED_IDX],
-                       target[HIGH_LEVEL_COMMAND_IDX])
+                       target[:,SPEED_IDX],
+                       target[:,HIGH_LEVEL_COMMAND_IDX])
         # Calculation of the loss function
         loss = nn.CrossEntropyLoss(output, target[0:1])
         # Backward pass (gradient computation)
@@ -332,8 +332,6 @@ def train(epoch, train_loader):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
-
-
 
 
 if  __name__=="__main__":
@@ -352,7 +350,7 @@ if  __name__=="__main__":
 
     train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
     train_loader = torch.utils.data.DataLoader(train_set,
-                                               batch_size=64,
+                                               batch_size=64, # TODO: Decide on batchsize
                                                shuffle=True,
                                                pin_memory=False)
 
