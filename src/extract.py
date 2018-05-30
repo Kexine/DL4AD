@@ -315,6 +315,8 @@ class Net(nn.Module):
 
 def train(epoch, train_loader):
     model.train()
+
+
     for batch_idx, (data, target) in enumerate(train_loader):
         # Move the input and target data on the GPU
         data, target = data.to(device), target.to(device)
@@ -325,7 +327,8 @@ def train(epoch, train_loader):
                        target[:,SPEED_IDX],
                        target[:,HIGH_LEVEL_COMMAND_IDX])
         # Calculation of the loss function
-        loss = nn.CrossEntropyLoss(output, target[0:1])
+        output_target = target[:,:2]  # TODO: remove magic numbers
+        loss = nn.MSELoss()(output.double(), output_target.double())
         # Backward pass (gradient computation)
         loss.backward()
         # Adjusting the parameters according to the loss function
