@@ -21,14 +21,14 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         #8 layers if con layers for image module
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=5, padding=2) #(output = 200x88)
-        self.conv2 = nn.Conv2d(32, 32, kernel_size=3, padding=1)#(output = 200x88)   
-        self.conv3= nn.Conv2d(32, 64, kernel_size=3, padding=2) #(output = 202x90)
-        self.conv4 = nn.Conv2d(64, 64, kernel_size=3, padding=1)#(output = 202x90)
-        self.conv5 = nn.Conv2d(64, 128, kernel_size=3, padding=2)#(output = 204x92)
-        self.conv6 = nn.Conv2d(128, 128, kernel_size=3, padding=1)#(output = 204x92)    
-        self.conv7 = nn.Conv2d(128, 256, kernel_size=3, padding=1)#(output = 204x92)
-        self.conv8 = nn.Conv2d(256, 256, kernel_size=3, padding=1)#(output = 204x92)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=5, padding=0,stride =2) #(output = 100x44)
+        self.conv2 = nn.Conv2d(32, 32, kernel_size=3, padding=1)#(output = 100x44)
+        self.conv3= nn.Conv2d(32, 64, kernel_size=3, padding=1,stride =2) #(output = 50x22)
+        self.conv4 = nn.Conv2d(64, 64, kernel_size=3, padding=1)#(output = 50x22)
+        self.conv5 = nn.Conv2d(64, 128, kernel_size=3, padding=1,stride =2)#(output = 25x11)
+        self.conv6 = nn.Conv2d(128, 128, kernel_size=3, padding=1)#(output = 25*11)
+        self.conv7 = nn.Conv2d(128, 256, kernel_size=3, padding=1)#(output = 25*11)
+        self.conv8 = nn.Conv2d(256, 256, kernel_size=3, padding=1)#(output = 25*11)
         
         
         #defining 2 different dropouts required after the conv and fc layers
@@ -48,7 +48,7 @@ class Net(nn.Module):
                                         
         
         #2 fc layers for image module
-        self.fc1 = nn.Linear(204*92*256, 512) #(please reconfirm with team)
+        self.fc1 = nn.Linear(25*11*256, 512)
         self.fc2 = nn.Linear(512, 512)
         
         #3 fc layers for control and measurement modules
@@ -61,8 +61,8 @@ class Net(nn.Module):
         self.fc7= nn.Linear(256,256)
         
         #5 for action output
-        self.fc8= nn.Linear(256,3)
-        self.fc8= nn.Linear(256,1)
+        self.fc8= nn.Linear(256,2)
+        self.fc9= nn.Linear(256,1)
         
         
     def forward(self, x,speed):
@@ -71,7 +71,6 @@ class Net(nn.Module):
         x= self.conv1_bn(x)
         x= self.conv_drop(x)
         x = relu(x)
-        
         
         x= self.conv2(x)
         x= self.conv2_bn(x)
@@ -110,8 +109,7 @@ class Net(nn.Module):
         
         ###################################
         
-        x = x.view(-1, 204*92*256)      ### do change this
-        
+        x = x.view(-1, 25*11*256)      ### do change this
         
         #########fully connected layers####
         x = self.fc1(x)
@@ -122,60 +120,40 @@ class Net(nn.Module):
         x= self.fc_drop(x)
         x = relu(x)
         
-        
         #####do something for control########
         
         ####for  measurement(speed)#########
         ###not to use in real raiscar#######
+        speed = speed.view(speed.shape[0], -1) 
         speed = self.fc3(speed)
         speed= self.fc_drop(speed)
         speed = relu(speed)
+        
         speed = self.fc4(speed)
         speed= self.fc_drop(speed)
         speed = relu(speed)
         ####################################
         
         ####################################
-        
         j = torch.cat((x,speed), 1)
         j = self.fc5(j)
         j= self.fc_drop(j)
         j = relu(j)
         
-        
         ####initiating branches############
-        branch_config = [["Steer", "Gas", "Brake"],["Steer", "Gas", "Brake"], ["Steer", "Gas", "Brake"], ["Speed"]]
+        branch_config = [["Steer", "Gas"],["Steer", "Gas"], ["Steer", "Gas"]]
         ###there were 5 in the code they made, dontn have idea why####
         
         for i in range(0, len(branch_config)):
+            branch_output = self.fc6(j)
+            branch_output= self.fc_drop(branch_output)
+            branch_output = relu(branch_output)
+            branch_output = self.fc7(j)
+            branch_output= self.fc_drop(branch_output)
+            branch_output = relu(branch_output)
+            branches.append(self.fc8(branch_output))
         #have to look for this regarding the dataset , on how to use it?
-        with tf.name_scope("Branch_" + str(i)):
-            if branch_config[i][0] == "Speed":
-                # we only use the image as input to speed prediction
-                branch_output = self.fc6(x)
-                branch_output= self.fc_drop(branch_output)
-                branch_output = relu(branch_output)
-                
-                branch_output = self.fc7(x)
-                branch_output= self.fc_drop(branch_output)
-                branch_output = relu(branch_output)
-                
-            else:
-                branch_output = self.fc6(x)
-                branch_output= self.fc_drop(branch_output)
-                branch_output = relu(branch_output)
-                
-                branch_output = self.fc7(x)
-                branch_output= self.fc_drop(branch_output)
-                branch_output = relu(branch_output)
-            
-            if i == 3:
-                branches.append(self.fc8(branch_output))
-            else:
-                branches.append(self.fc9(branch_output))
-                
         #### output action##########
-        
         
         return branches
 
@@ -185,8 +163,6 @@ model = Net().to(device)
 relu = F.relu
 
 optimizer = optim.Adam(model.parameters(), lr=0.0002)
-
-criterion = nn.CrossEntropyLoss()
 
 lossx = []
 
