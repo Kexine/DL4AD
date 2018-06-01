@@ -61,7 +61,7 @@ class Net(nn.Module):
         self.fc7= nn.Linear(256,256)
         
         #5 for action output
-        self.fc8= nn.Linear(256,3)
+        self.fc8= nn.Linear(256,2)
         self.fc9= nn.Linear(256,1)
         
         
@@ -71,7 +71,6 @@ class Net(nn.Module):
         x= self.conv1_bn(x)
         x= self.conv_drop(x)
         x = relu(x)
-        
         
         x= self.conv2(x)
         x= self.conv2_bn(x)
@@ -112,7 +111,6 @@ class Net(nn.Module):
         
         x = x.view(-1, 25*11*256)      ### do change this
         
-        
         #########fully connected layers####
         x = self.fc1(x)
         x= self.fc_drop(x)
@@ -122,7 +120,6 @@ class Net(nn.Module):
         x= self.fc_drop(x)
         x = relu(x)
         
-        
         #####do something for control########
         
         ####for  measurement(speed)#########
@@ -131,52 +128,32 @@ class Net(nn.Module):
         speed = self.fc3(speed)
         speed= self.fc_drop(speed)
         speed = relu(speed)
+        
         speed = self.fc4(speed)
         speed= self.fc_drop(speed)
         speed = relu(speed)
         ####################################
         
         ####################################
-        
         j = torch.cat((x,speed), 1)
         j = self.fc5(j)
         j= self.fc_drop(j)
         j = relu(j)
         
-        
         ####initiating branches############
-        branch_config = [["Steer", "Gas", "Brake"],["Steer", "Gas", "Brake"], ["Steer", "Gas", "Brake"], ["Speed"]]
+        branch_config = [["Steer", "Gas"],["Steer", "Gas"], ["Steer", "Gas"]]
         ###there were 5 in the code they made, dontn have idea why####
         
         for i in range(0, len(branch_config)):
+            branch_output = self.fc6(j)
+            branch_output= self.fc_drop(branch_output)
+            branch_output = relu(branch_output)
+            branch_output = self.fc7(j)
+            branch_output= self.fc_drop(branch_output)
+            branch_output = relu(branch_output)
+            branches.append(self.fc8(branch_output))
         #have to look for this regarding the dataset , on how to use it?
-        with tf.name_scope("Branch_" + str(i)):
-            if branch_config[i][0] == "Speed":
-                # we only use the image as input to speed prediction
-                branch_output = self.fc6(x)
-                branch_output= self.fc_drop(branch_output)
-                branch_output = relu(branch_output)
-                
-                branch_output = self.fc7(x)
-                branch_output= self.fc_drop(branch_output)
-                branch_output = relu(branch_output)
-                
-            else:
-                branch_output = self.fc6(x)
-                branch_output= self.fc_drop(branch_output)
-                branch_output = relu(branch_output)
-                
-                branch_output = self.fc7(x)
-                branch_output= self.fc_drop(branch_output)
-                branch_output = relu(branch_output)
-            
-            if i == 3:
-                branches.append(self.fc8(branch_output))
-            else:
-                branches.append(self.fc9(branch_output))
-                
         #### output action##########
-        
         
         return branches
 
