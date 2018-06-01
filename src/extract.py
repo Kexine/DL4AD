@@ -261,7 +261,6 @@ class Net(nn.Module):
         ###################################
 
         # x = x.view(-1, 204*92*256)      ### TODO: change this
-        print("Shape of x before view(): {}".format(x.shape))
         x = x.view(-1, 25*11*256)
 
         #########fully connected layers####
