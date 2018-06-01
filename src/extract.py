@@ -75,6 +75,17 @@ ANGLE_IDX = 27 # (The yaw angle for this camera)
 STEERING_ANGLE_IDX = 0
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
+def load_model():
+    '''
+    Check if a pre trained model exists and load it if found
+    '''
+    print("Checking if some model exists...")
+    model_path = '/home/hive/DL4AD/src/model/model.pt'
+    if Path(model_path).is_file():
+        model.load_state_dict(torch.load(model_path))
+        print("Model was found and loaded!")
+    else:
+        print("No model found, starting training with new model!")
 
 def matplot_display(sample):
     """
