@@ -132,16 +132,36 @@ class H5Dataset(Dataset):
         self.transform = transform
 
         self.file_names = sorted(os.listdir(self.root_dir))
+        self.file_names = self._check_corruption(self.file_names)
+
         # print(self.file_names)
         # print(len(self.file_names))
         self.file_idx = 0
+
+    def _check_corruption(self,file_names):
+        crpt_idx = []
+        old_length = len(file_names)
+        for idx, val in enumerate(file_names):
+            # check if h5 is corrupted by checking for file signature exception
+            try:
+                f = h5py.File(self.root_dir + '/' + file_names[idx], 'r')
+            except OSError:
+                print("File {} is corrupted and will be removed from list".format(file_names[idx]))
+                f.close()
+                # if corrupte file found, save index
+                crpt_idx.append(idx)
+        # delete corrupted file names from the file list
+        for i in crpt_idx:
+            del file_names[i]
+        new_length = len(file_names)
+        print("{} files have been removed from the Training Set".format(old_length-new_length))
+        return file_names
+
 
     def __len__(self):
         return len(self.file_names)*IMAGES_PER_FILE
 
     def __getitem__(self, idx):
-        self.file_names =  sorted(os.listdir(self.root_dir))
-
         # The input idx seems sequential but we're actually going through the
         # images in each file and going through all the files in order.
         # Note: Danger! This >>WILL<< break, if any h5 file doesn't have
@@ -358,7 +378,7 @@ if  __name__=="__main__":
                                                shuffle=True,
                                                pin_memory=False)
 
-    orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
+    # orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
 
     model = Net().to(device)
 
