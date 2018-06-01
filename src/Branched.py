@@ -21,14 +21,14 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         #8 layers if con layers for image module
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=5, padding=2) #(output = 200x88)
-        self.conv2 = nn.Conv2d(32, 32, kernel_size=3, padding=1)#(output = 200x88)   
-        self.conv3= nn.Conv2d(32, 64, kernel_size=3, padding=2) #(output = 202x90)
-        self.conv4 = nn.Conv2d(64, 64, kernel_size=3, padding=1)#(output = 202x90)
-        self.conv5 = nn.Conv2d(64, 128, kernel_size=3, padding=2)#(output = 204x92)
-        self.conv6 = nn.Conv2d(128, 128, kernel_size=3, padding=1)#(output = 204x92)    
-        self.conv7 = nn.Conv2d(128, 256, kernel_size=3, padding=1)#(output = 204x92)
-        self.conv8 = nn.Conv2d(256, 256, kernel_size=3, padding=1)#(output = 204x92)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=5, padding=0,stride =2) #(output = 100x44)
+        self.conv2 = nn.Conv2d(32, 32, kernel_size=3, padding=1)#(output = 100x44)
+        self.conv3= nn.Conv2d(32, 64, kernel_size=3, padding=1,stride =2) #(output = 50x22)
+        self.conv4 = nn.Conv2d(64, 64, kernel_size=3, padding=1)#(output = 50x22)
+        self.conv5 = nn.Conv2d(64, 128, kernel_size=3, padding=1,stride =2)#(output = 25x11)
+        self.conv6 = nn.Conv2d(128, 128, kernel_size=3, padding=1)#(output = 25*11)
+        self.conv7 = nn.Conv2d(128, 256, kernel_size=3, padding=1)#(output = 25*11)
+        self.conv8 = nn.Conv2d(256, 256, kernel_size=3, padding=1)#(output = 25*11)
         
         
         #defining 2 different dropouts required after the conv and fc layers
@@ -48,7 +48,7 @@ class Net(nn.Module):
                                         
         
         #2 fc layers for image module
-        self.fc1 = nn.Linear(204*92*256, 512) #(please reconfirm with team)
+        self.fc1 = nn.Linear(25*11*256, 512)
         self.fc2 = nn.Linear(512, 512)
         
         #3 fc layers for control and measurement modules
@@ -62,7 +62,7 @@ class Net(nn.Module):
         
         #5 for action output
         self.fc8= nn.Linear(256,3)
-        self.fc8= nn.Linear(256,1)
+        self.fc9= nn.Linear(256,1)
         
         
     def forward(self, x,speed):
@@ -110,7 +110,7 @@ class Net(nn.Module):
         
         ###################################
         
-        x = x.view(-1, 204*92*256)      ### do change this
+        x = x.view(-1, 25*11*256)      ### do change this
         
         
         #########fully connected layers####
@@ -127,6 +127,7 @@ class Net(nn.Module):
         
         ####for  measurement(speed)#########
         ###not to use in real raiscar#######
+        speed = speed.view(speed.shape[0], -1) 
         speed = self.fc3(speed)
         speed= self.fc_drop(speed)
         speed = relu(speed)
@@ -185,8 +186,6 @@ model = Net().to(device)
 relu = F.relu
 
 optimizer = optim.Adam(model.parameters(), lr=0.0002)
-
-criterion = nn.CrossEntropyLoss()
 
 lossx = []
 
