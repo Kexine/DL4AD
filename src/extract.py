@@ -81,7 +81,7 @@ def load_model():
     '''
     print("Checking if some model exists...")
     model_path = '/home/hive/DL4AD/src/model/model.pt'
-    if Path(model_path).is_file():
+    if os.path.isfile(model_path):
         model.load_state_dict(torch.load(model_path))
         print("Model was found and loaded!")
     else:
@@ -292,7 +292,7 @@ class Net(nn.Module):
         ###################################
 
         # x = x.view(-1, 204*92*256)      ### TODO: change this
-        print("Shape of x before view(): {}".format(x.shape))
+        # print("Shape of x before view(): {}".format(x.shape))
         x = x.view(-1, 25*11*256)
 
         #########fully connected layers####
@@ -401,7 +401,7 @@ if  __name__=="__main__":
     # criterion = nn.CrossEntropyLoss()
 
     lossx = []
-
+    load_model()
     num_train_epochs = 1
     for epoch in range(1, num_train_epochs + 1):
         train(epoch, train_loader)
