@@ -306,8 +306,7 @@ class Net(nn.Module):
             branch_output= self.fc_drop(branch_output)
             branch_output = relu(branch_output)
             branches.append(self.fc8(branch_output))
-        #have to look for this regarding the dataset , on how to use it?
-        #### output action##########
+        
         return branches
 
 
