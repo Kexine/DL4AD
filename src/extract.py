@@ -76,6 +76,22 @@ ANGLE_IDX = 27 # (The yaw angle for this camera)
 STEERING_ANGLE_IDX = 0
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
+def load_model(model_path):
+    '''
+    Check if a pre trained model exists and load it if found
+    '''
+    print("Checking if some model exists...")
+
+    if os.path.isfile(model_path):
+        model.load_state_dict(torch.load(model_path))
+        print("Model was found and loaded!")
+    else:
+        print("No model found, starting training with new model!")
+
+def save_model(model, model_path):
+    torch.save(model.state_dict(), model_path)
+
+
 
 def matplot_display(sample):
     """
@@ -133,16 +149,36 @@ class H5Dataset(Dataset):
         self.transform = transform
 
         self.file_names = sorted(os.listdir(self.root_dir))
+        self.file_names = self._check_corruption(self.file_names)
+
         # print(self.file_names)
         # print(len(self.file_names))
         self.file_idx = 0
+
+    def _check_corruption(self,file_names):
+        crpt_idx = []
+        old_length = len(file_names)
+        for idx, val in enumerate(file_names):
+            # check if h5 is corrupted by checking for file signature exception
+            try:
+                f = h5py.File(self.root_dir + '/' + file_names[idx], 'r')
+            except OSError:
+                print("File {} is corrupted and will be removed from list".format(file_names[idx]))
+                f.close()
+                # if corrupte file found, save index
+                crpt_idx.append(idx)
+        # delete corrupted file names from the file list
+        for i in crpt_idx:
+            del file_names[i]
+        new_length = len(file_names)
+        print("{} files have been removed from the Training Set".format(old_length-new_length))
+        return file_names
+
 
     def __len__(self):
         return len(self.file_names)*IMAGES_PER_FILE
 
     def __getitem__(self, idx):
-        self.file_names =  sorted(os.listdir(self.root_dir))
-
         # The input idx seems sequential but we're actually going through the
         # images in each file and going through all the files in order.
         # Note: Danger! This >>WILL<< break, if any h5 file doesn't have
@@ -262,7 +298,7 @@ class Net(nn.Module):
         ###################################
 
         # x = x.view(-1, 204*92*256)      ### TODO: change this
-        print("Shape of x before view(): {}".format(x.shape))
+        # print("Shape of x before view(): {}".format(x.shape))
         x = x.view(-1, 25*11*256)
 
         #########fully connected layers####
@@ -315,9 +351,8 @@ class Net(nn.Module):
 
 
 def train(epoch, train_loader):
+
     model.train()
-
-
     for batch_idx, (data, target) in enumerate(train_loader):
         # Move the input and target data on the GPU
         data, target = data.to(device), target.to(device)
@@ -339,10 +374,10 @@ def train(epoch, train_loader):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
-
+            save_model(model, model_path)
 
 if  __name__=="__main__":
-
+    model_path = '../model/model.pt'
     # dummy composition for debugging
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
@@ -361,9 +396,11 @@ if  __name__=="__main__":
                                                shuffle=True,
                                                pin_memory=False)
 
-    orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
+    # orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
 
     model = Net().to(device)
+    load_model(model_path)
+
 
     relu = F.relu
 
@@ -372,7 +409,6 @@ if  __name__=="__main__":
     # criterion = nn.CrossEntropyLoss()
 
     lossx = []
-
     num_train_epochs = 1
     for epoch in range(1, num_train_epochs + 1):
         train(epoch, train_loader)
