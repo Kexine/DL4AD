@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat May 26 16:22:39 2018
-
-@author: sirohik
+Deep Learning in Autonomous Driving
+Project 4: Exercise sheet 3, Task 2
+Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 """
 
 #!/usr/bin/env python3
@@ -306,6 +306,7 @@ class Net(nn.Module):
             branch_output= self.fc_drop(branch_output)
             branch_output = relu(branch_output)
             branches.append(self.fc8(branch_output))
+        #have to look for this regarding the dataset , on how to use it?
         
         return branches
 

@@ -1,9 +1,8 @@
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Deep Learning in Autonomous Driving
-Project 4: Exercise sheet 3, Task 1
+Project 4: Exercise sheet 3, Task 3
 Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 """
 
@@ -76,22 +75,6 @@ ANGLE_IDX = 27 # (The yaw angle for this camera)
 STEERING_ANGLE_IDX = 0
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
-def load_model(model_path):
-    '''
-    Check if a pre trained model exists and load it if found
-    '''
-    print("Checking if some model exists...")
-
-    if os.path.isfile(model_path):
-        model.load_state_dict(torch.load(model_path))
-        print("Model was found and loaded!")
-    else:
-        print("No model found, starting training with new model!")
-
-def save_model(model, model_path):
-    torch.save(model.state_dict(), model_path)
-
-
 
 def matplot_display(sample):
     """
@@ -149,36 +132,16 @@ class H5Dataset(Dataset):
         self.transform = transform
 
         self.file_names = sorted(os.listdir(self.root_dir))
-        self.file_names = self._check_corruption(self.file_names)
-
         # print(self.file_names)
         # print(len(self.file_names))
         self.file_idx = 0
-
-    def _check_corruption(self,file_names):
-        crpt_idx = []
-        old_length = len(file_names)
-        for idx, val in enumerate(file_names):
-            # check if h5 is corrupted by checking for file signature exception
-            try:
-                f = h5py.File(self.root_dir + '/' + file_names[idx], 'r')
-            except OSError:
-                print("File {} is corrupted and will be removed from list".format(file_names[idx]))
-                f.close()
-                # if corrupte file found, save index
-                crpt_idx.append(idx)
-        # delete corrupted file names from the file list
-        for i in crpt_idx:
-            del file_names[i]
-        new_length = len(file_names)
-        print("{} files have been removed from the Training Set".format(old_length-new_length))
-        return file_names
-
 
     def __len__(self):
         return len(self.file_names)*IMAGES_PER_FILE
 
     def __getitem__(self, idx):
+        self.file_names =  sorted(os.listdir(self.root_dir))
+
         # The input idx seems sequential but we're actually going through the
         # images in each file and going through all the files in order.
         # Note: Danger! This >>WILL<< break, if any h5 file doesn't have
@@ -208,6 +171,7 @@ class H5Dataset(Dataset):
 
 
 class Net(nn.Module):
+    branches = []
     def __init__(self):
         super(Net, self).__init__()
         #8 layers if con layers for image module
@@ -219,11 +183,13 @@ class Net(nn.Module):
         self.conv6 = nn.Conv2d(128, 128, kernel_size=3, padding=1)#(output = 25*11)
         self.conv7 = nn.Conv2d(128, 256, kernel_size=3, padding=1)#(output = 25*11)
         self.conv8 = nn.Conv2d(256, 256, kernel_size=3, padding=1)#(output = 25*11)
-
+        
+        
         #defining 2 different dropouts required after the conv and fc layers
         self.conv_drop = nn.Dropout2d(p=0.2)
         self.fc_drop = nn.Dropout2d(p=0.5)
-
+        
+        
         #batch normalisers for every convolution layer
         self.conv1_bn = nn.BatchNorm2d(32)
         self.conv2_bn = nn.BatchNorm2d(32)
@@ -233,126 +199,117 @@ class Net(nn.Module):
         self.conv6_bn = nn.BatchNorm2d(128)
         self.conv7_bn = nn.BatchNorm2d(256)
         self.conv8_bn = nn.BatchNorm2d(256)
-
+                                        
+        
         #2 fc layers for image module
-        # self.fc1 = nn.Linear(204*92*256, 512) #(please reconfirm with team)
         self.fc1 = nn.Linear(25*11*256, 512)
         self.fc2 = nn.Linear(512, 512)
-
+        
         #3 fc layers for control and measurement modules
         self.fc3= nn.Linear(1,128)
         self.fc4= nn.Linear(128,128)
-
+        
         #4 fc layers for concatenated module
-        self.fc5= nn.Linear(768,512)
+        self.fc5= nn.Linear(640,512)
         self.fc6= nn.Linear(512,256)
         self.fc7= nn.Linear(256,256)
-
+        
         #5 for action output
         self.fc8= nn.Linear(256,2)
-
-
-    def forward(self, x,m,c):
-
+        
+        
+        
+    def forward(self, x,speed):
         #######conv layers##############
-        x = self.conv1(x)
-        x = self.conv1_bn(x)
-        x = self.conv_drop(x)
+        x= self.conv1(x)
+        x= self.conv1_bn(x)
+        x= self.conv_drop(x)
         x = relu(x)
-
+        
         x= self.conv2(x)
         x= self.conv2_bn(x)
         x= self.conv_drop(x)
         x = relu(x)
-
+        
         x= self.conv3(x)
         x= self.conv3_bn(x)
         x= self.conv_drop(x)
         x = relu(x)
-
+        
         x= self.conv4(x)
-        x= self.conv4_bn(x)
+        x= self.conv4_bn(x) 
         x= self.conv_drop(x)
         x = relu(x)
-
+        
         x= self.conv5(x)
         x= self.conv5_bn(x)
         x= self.conv_drop(x)
         x = relu(x)
-
+        
         x= self.conv6(x)
         x= self.conv6_bn(x)
         x= self.conv_drop(x)
         x = relu(x)
-
+        
         x= self.conv7(x)
         x= self.conv7_bn(x)
         x= self.conv_drop(x)
         x = relu(x)
-
+        
         x= self.conv8(x)
         x= self.conv8_bn(x)
         x= self.conv_drop(x)
         x = relu(x)
-
+        
         ###################################
-
-        # x = x.view(-1, 204*92*256)      ### TODO: change this
-        # print("Shape of x before view(): {}".format(x.shape))
-        x = x.view(-1, 25*11*256)
-
+        
+        x = x.view(-1, 25*11*256)      ### do change this
+        
         #########fully connected layers####
         x = self.fc1(x)
-        x = self.fc_drop(x)
+        x= self.fc_drop(x)
         x = relu(x)
-
+        
         x = self.fc2(x)
-        x = self.fc_drop(x)
+        x= self.fc_drop(x)
         x = relu(x)
-
-
-        ####################################
-
+        
+        #####do something for control########
+        
         ####for  measurement(speed)#########
-        m = m.view(m.shape[0], -1)
-        m = self.fc3(m)
-        m= self.fc_drop(m)
-        m = relu(m)
-
-        m = self.fc4(m)
-        m = self.fc_drop(m)
-        m = relu(m)
+        ###not to use in real raiscar#######
+        speed = speed.view(speed.shape[0], -1) 
+        speed = self.fc3(speed)
+        speed= self.fc_drop(speed)
+        speed = relu(speed)
+        
+        speed = self.fc4(speed)
+        speed= self.fc_drop(speed)
+        speed = relu(speed)
         ####################################
-
-        #########for control################
-        c = c.view(c.shape[0], -1)
-        c = self.fc3(c)
-        c = self.fc4(c)
-
-        ###concatenating previous layers####
-        j = torch.cat((x,m,c), 1)
+        
+        ####################################
+        j = torch.cat((x,speed), 1)
         j = self.fc5(j)
-        j = self.fc_drop(j)
-        j = relu(j)
-
-        ####################################
-        j = self.fc6(j)
         j= self.fc_drop(j)
         j = relu(j)
-
-        j = self.fc7(j)
-        j = self.fc_drop(j)
-        j = relu(j)
-
-        #### output action##########
-        action = self.fc8(j)
-
-        return action
+        
+        actions = self.fc6(j)
+        actions= self.fc_drop(actions)
+        actions = relu(actions)
+        actions = self.fc7(actions)
+        actions= self.fc_drop(actions)
+        actions = relu(actions)
+        actions= self.fc8(actions)
+        #hae to look for this regarding the dataset , on how to use it?
+        
+        return actions
 
 
 def train(epoch, train_loader):
-
     model.train()
+
+
     for batch_idx, (data, target) in enumerate(train_loader):
         # Move the input and target data on the GPU
         data, target = data.to(device), target.to(device)
@@ -360,9 +317,8 @@ def train(epoch, train_loader):
         optimizer.zero_grad()
         # Forward pass of the neural net
         output = model(data,
-                       target[:,SPEED_IDX],
-                       target[:,HIGH_LEVEL_COMMAND_IDX])
-        print(output.shape)
+                       target[:,SPEED_IDX])
+        
         # Calculation of the loss function
         output_target = target[:,:2]  # TODO: remove magic numbers
         loss = nn.MSELoss()(output.double(), output_target.double())
@@ -374,10 +330,10 @@ def train(epoch, train_loader):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
-            save_model(model, model_path)
+
 
 if  __name__=="__main__":
-    model_path = '../model/model.pt'
+
     # dummy composition for debugging
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
@@ -396,11 +352,9 @@ if  __name__=="__main__":
                                                shuffle=True,
                                                pin_memory=False)
 
-    # orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
+    orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
 
     model = Net().to(device)
-    load_model(model_path)
-
 
     relu = F.relu
 
@@ -409,6 +363,7 @@ if  __name__=="__main__":
     # criterion = nn.CrossEntropyLoss()
 
     lossx = []
+
     num_train_epochs = 1
     for epoch in range(1, num_train_epochs + 1):
         train(epoch, train_loader)
