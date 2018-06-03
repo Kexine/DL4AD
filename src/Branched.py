@@ -83,7 +83,7 @@ class Net(nn.Module):
         x = relu(x)
         
         x= self.conv4(x)
-        x= self.conv4_bn(x)
+        x= self.conv4_bn(x) 
         x= self.conv_drop(x)
         x = relu(x)
         
@@ -143,7 +143,7 @@ class Net(nn.Module):
         ####initiating branches############
         branch_config = [["Steer", "Gas"],["Steer", "Gas"], ["Steer", "Gas"]]
         ###there were 5 in the code they made, dontn have idea why####
-        
+        branches=[]
         for i in range(0, len(branch_config)):
             branch_output = self.fc6(j)
             branch_output= self.fc_drop(branch_output)
@@ -154,9 +154,7 @@ class Net(nn.Module):
             branches.append(self.fc8(branch_output))
         #have to look for this regarding the dataset , on how to use it?
         #### output action##########
-        
         return branches
-
 
 model = Net().to(device)
 
@@ -165,4 +163,3 @@ relu = F.relu
 optimizer = optim.Adam(model.parameters(), lr=0.0002)
 
 lossx = []
-
