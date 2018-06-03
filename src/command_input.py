@@ -26,7 +26,7 @@ from torchvision import datasets, transforms
 # our custom modules
 from customTransforms import *
 from ImageHandling import ImageBrowser
-from Extractor import H5Dataset
+from Extractor import H5Dataset, target_idx
 
 import warnings
 torch.manual_seed(1)
@@ -243,12 +243,14 @@ def train(epoch, train_loader):
         optimizer.zero_grad()
         # Forward pass of the neural net
         output = model(data,
-                       target[:,SPEED_IDX],
-                       target[:,HIGH_LEVEL_COMMAND_IDX])
-        print(output.shape)
+                       target[:,target_idx['speed']],
+                       target[:,target_idx['command']])
+
         # Calculation of the loss function
-        output_target = target[:,:2]  # TODO: remove magic numbers
+        output_target = target[:,[target_idx['steer'],
+                                  target_idx['gas']]]  # DONE: Remove magic numbers
         loss = nn.MSELoss()(output.double(), output_target.double())
+
         # Backward pass (gradient computation)
         loss.backward()
         # Adjusting the parameters according to the loss function

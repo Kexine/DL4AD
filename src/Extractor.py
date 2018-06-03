@@ -71,9 +71,38 @@ NOISE_IDX = 25 #, Boolean # ( If the noise, perturbation, is activated, (Not Use
 CAMERA_IDX = 26 # (Which camera was used)
 ANGLE_IDX = 27 # (The yaw angle for this camera)
 
+target_idx = {'steer': 0,  # float
+              'gas': 1,  # float
+              'brake': 2,  # float
+              'handbrake': 3,  # boolean
+              'reverse gear': 4,  # boolean
+              'steer noise': 5,  # float
+              'gas noise': 6,  # float
+              'brake noise': 7,  #
+              'pos x': 8,  # float
+              'pos y': 9,  # float
+              'speed': 10,  # float
+              'collision other': 11,  # float
+              'collision pedestrian': 12,  # float
+              'collision car': 13,  # float
+              'opposite lane intersection': 14,  # float
+              'sidewalk intersection': 15,  # float
+              'acc x': 16,  # float
+              'acc y': 17,  # float
+              'acc z': 18,  # float
+              'platform time': 19,  # float
+              'game time': 20,  # float
+              'orientation x': 21,  # float
+              'orientation y': 22,  # float
+              'orientation z': 23,  # float
+              'command': 24,  # int
+              'noise': 25,  # boolean
+              'camera number': 26,  #
+              'camera yaw': 27  #
+}
+
 ### CONSTANTS ###
 
-STEERING_ANGLE_IDX = 0
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
 
