@@ -42,35 +42,6 @@ warnings.filterwarnings("ignore")
 IMAGES_PER_FILE = 200
 
 # Target Array indices
-STEER_IDX = 0 # float
-GAS_IDX = 1 # float
-BRAKE_IDX = 2 # float
-HAND_BRAKE_IDX = 3 # boolean
-REVERSE_GEAR_IDX = 4 # boolean
-STEER_NOISE_IDX = 5 # float
-GAS_NOISE_IDX = 6 # float
-BRAKE_NOISE_IDX = 7 # float
-POSITION_X_IDX = 8 # float
-POSITION_Y_IDX = 9 # float
-SPEED_IDX = 10 # float
-COLLISION_OTHER_IDX = 11 # float
-COLLISION_PEDESTRIAN_IDX = 12 # float
-COLLISION_CAR_IDX = 13 # float
-OPPOSITE_LANE_INTER_IDX = 14 # float
-SIDEWALK_INTERSECT_IDX = 15 # float
-ACCELERATION_X_IDX = 16 #float
-ACCELERATION_Y_IDX = 17 # float
-ACCELERATION_Z_IDX = 18 # float
-PLATFORM_TIME_IDX = 19 # float
-GAME_TIME_IDX = 20 # float
-ORIENTATION_X_IDX = 21 # float
-ORIENTATION_Y_IDX = 22 # float
-ORIENTATION_Z_IDX = 23 # float
-HIGH_LEVEL_COMMAND_IDX = 24 # int ( 2 Follow lane, 3 Left, 4 Right, 5 Straight)
-NOISE_IDX = 25 #, Boolean # ( If the noise, perturbation, is activated, (Not Used) )
-CAMERA_IDX = 26 # (Which camera was used)
-ANGLE_IDX = 27 # (The yaw angle for this camera)
-
 target_idx = {'steer': 0,  # float
               'gas': 1,  # float
               'brake': 2,  # float
@@ -113,7 +84,9 @@ class H5Dataset(Dataset):
     I have no idea what depth and labels are supposed to mean, since they are
     not documented. I will omit them
     '''
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir,
+                 transform=None,
+                 images_per_file=IMAGES_PER_FILE):
         self.root_dir = root_dir
         self.transform = transform
 

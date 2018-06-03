@@ -11,6 +11,7 @@ from __future__ import print_function, division
 import h5py
 import cv2
 import numpy as np
+import pandas as pd
 import os, os.path
 import random
 
@@ -37,41 +38,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
-IMAGES_PER_FILE = 200
-
-# Target Array indices
-STEER_IDX = 0 # float
-GAS_IDX = 1 # float
-BRAKE_IDX = 2 # float
-HAND_BRAKE_IDX = 3 # boolean
-REVERSE_GEAR_IDX = 4 # boolean
-STEER_NOISE_IDX = 5 # float
-GAS_NOISE_IDX = 6 # float
-BRAKE_NOISE_IDX = 7 # float
-POSITION_X_IDX = 8 # float
-POSITION_Y_IDX = 9 # float
-SPEED_IDX = 10 # float
-COLLISION_OTHER_IDX = 11 # float
-COLLISION_PEDESTRIAN_IDX = 12 # float
-COLLISION_CAR_IDX = 13 # float
-OPPOSITE_LANE_INTER_IDX = 14 # float
-SIDEWALK_INTERSECT_IDX = 15 # float
-ACCELERATION_X_IDX = 16 #float
-ACCELERATION_Y_IDX = 17 # float
-ACCELERATION_Z_IDX = 18 # float
-PLATFORM_TIME_IDX = 19 # float
-GAME_TIME_IDX = 20 # float
-ORIENTATION_X_IDX = 21 # float
-ORIENTATION_Y_IDX = 22 # float
-ORIENTATION_Z_IDX = 23 # float
-HIGH_LEVEL_COMMAND_IDX = 24 # int ( 2 Follow lane, 3 Left, 4 Right, 5 Straight)
-NOISE_IDX = 25 #, Boolean # ( If the noise, perturbation, is activated, (Not Used) )
-CAMERA_IDX = 26 # (Which camera was used)
-ANGLE_IDX = 27 # (The yaw angle for this camera)
-
 ### CONSTANTS ###
 
-STEERING_ANGLE_IDX = 0
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
 def load_model(model_path):
@@ -87,8 +55,18 @@ def load_model(model_path):
         print("No model found, starting training with new model!")
 
 
-def save_model(model, model_path):
+def save_model(model, model_path, train_loss = None):
     torch.save(model.state_dict(), model_path)
+    # also store a csv file with the train loss
+    if train_loss is not None:
+        csv_path = model_path.replace("pt", "csv")
+        print("saving to" + csv_path)
+        df = pd.DataFrame([train_loss])
+        with open(csv_path, 'a') as f:
+            df.to_csv(f,
+                      sep="\t",
+                      header=False,
+                      index=False)
 
 
 # Our neural network
@@ -137,7 +115,6 @@ class Net(nn.Module):
 
 
     def forward(self, x,m,c):
-
         #######conv layers##############
         x = self.conv1(x)
         x = self.conv1_bn(x)
@@ -192,8 +169,6 @@ class Net(nn.Module):
         x = self.fc2(x)
         x = self.fc_drop(x)
         x = relu(x)
-
-
         ####################################
 
         ####for  measurement(speed)#########
@@ -233,37 +208,8 @@ class Net(nn.Module):
         return action
 
 
-def train(epoch, train_loader):
-
-    model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        # Move the input and target data on the GPU
-        data, target = data.to(device), target.to(device)
-        # Zero out gradients from previous step
-        optimizer.zero_grad()
-        # Forward pass of the neural net
-        output = model(data,
-                       target[:,target_idx['speed']],
-                       target[:,target_idx['command']])
-
-        # Calculation of the loss function
-        output_target = target[:,[target_idx['steer'],
-                                  target_idx['gas']]]  # DONE: Remove magic numbers
-        loss = nn.MSELoss()(output.double(), output_target.double())
-
-        # Backward pass (gradient computation)
-        loss.backward()
-        # Adjusting the parameters according to the loss function
-        optimizer.step()
-        if batch_idx % 10 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
-            save_model(model, model_path)
-
-
 if  __name__=="__main__":
-    model_path = '../model/model.pt'
+    model_path = '../model/command_input.pt'
     # dummy composition for debugging
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
@@ -294,9 +240,12 @@ if  __name__=="__main__":
 
     # criterion = nn.CrossEntropyLoss()
 
+    ############### Training
     lossx = []
-    num_train_epochs = 1
+    num_train_epochs = 10
     for epoch in range(1, num_train_epochs + 1):
+        train_loss = []  # empty list to store the train losses
+
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             # Move the input and target data on the GPU
@@ -305,10 +254,11 @@ if  __name__=="__main__":
             optimizer.zero_grad()
             # Forward pass of the neural net
             output = model(data,
-                           target[:,SPEED_IDX],
-                           target[:,HIGH_LEVEL_COMMAND_IDX])
+                           target[:,target_idx['speed']],
+                           target[:,target_idx['command']])
             # Calculation of the loss function
-            output_target = target[:,:2]  # TODO: remove magic numbers
+            output_target = target[:,[target_idx['steer'],
+                                      target_idx['gas']]]  # DONE: remove magic numbers
             loss = nn.MSELoss()(output.double(), output_target.double())
             # Backward pass (gradient computation)
             loss.backward()
@@ -318,7 +268,5 @@ if  __name__=="__main__":
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss.item()))
-            save_model(model, model_path)
-
-    # browser = ImageBrowser(train_set, orig_train_set)
-    # browser.show()
+            save_model(model, model_path,
+                       train_loss = loss.item())
