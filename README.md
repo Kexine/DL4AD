@@ -23,6 +23,11 @@ Deep Learning for Autonomous Driving - Summer Semester 2018, Freiburg
     - [X] Command Input
     - [X] Branched
     
+- [ ] Cleaning up code
+    - [X] Cleaning up command input
+    - [ ] Cleaning up branched
+    - [ ] Make the data augmentations randomized (like in the paper)
+    
 - [ ] try pooling
     - [ ] max pooling
     - [ ] no pooling

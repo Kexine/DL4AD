@@ -60,7 +60,6 @@ def save_model(model, model_path, train_loss = None):
     # also store a csv file with the train loss
     if train_loss is not None:
         csv_path = model_path.replace("pt", "csv")
-        print("saving to" + csv_path)
         df = pd.DataFrame([train_loss])
         with open(csv_path, 'a') as f:
             df.to_csv(f,
