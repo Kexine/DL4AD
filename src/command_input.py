@@ -32,6 +32,8 @@ from Extractor import H5Dataset, target_idx
 import warnings
 torch.manual_seed(1)
 
+BATCH_SIZE = 128
+
 # define the cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -118,42 +120,42 @@ class Net(nn.Module):
         x = self.conv1(x)
         x = self.conv1_bn(x)
         x = self.conv_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         x= self.conv2(x)
         x= self.conv2_bn(x)
         x= self.conv_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         x= self.conv3(x)
         x= self.conv3_bn(x)
         x= self.conv_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         x= self.conv4(x)
         x= self.conv4_bn(x)
         x= self.conv_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         x= self.conv5(x)
         x= self.conv5_bn(x)
         x= self.conv_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         x= self.conv6(x)
         x= self.conv6_bn(x)
         x= self.conv_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         x= self.conv7(x)
         x= self.conv7_bn(x)
         x= self.conv_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         x= self.conv8(x)
         x= self.conv8_bn(x)
         x= self.conv_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         ###################################
 
@@ -163,22 +165,22 @@ class Net(nn.Module):
         #########fully connected layers####
         x = self.fc1(x)
         x = self.fc_drop(x)
-        x = relu(x)
+        x = F.relu(x)
 
         x = self.fc2(x)
         x = self.fc_drop(x)
-        x = relu(x)
+        x = F.relu(x)
         ####################################
 
         ####for  measurement(speed)#########
         m = m.view(m.shape[0], -1)
         m = self.fc3(m)
         m= self.fc_drop(m)
-        m = relu(m)
+        m = F.relu(m)
 
         m = self.fc4(m)
         m = self.fc_drop(m)
-        m = relu(m)
+        m = F.relu(m)
         ####################################
 
         #########for control################
@@ -190,16 +192,16 @@ class Net(nn.Module):
         j = torch.cat((x,m,c), 1)
         j = self.fc5(j)
         j = self.fc_drop(j)
-        j = relu(j)
+        j = F.relu(j)
 
         ####################################
         j = self.fc6(j)
         j= self.fc_drop(j)
-        j = relu(j)
+        j = F.relu(j)
 
         j = self.fc7(j)
         j = self.fc_drop(j)
-        j = relu(j)
+        j = F.relu(j)
 
         #### output action##########
         action = self.fc8(j)
@@ -210,7 +212,6 @@ class Net(nn.Module):
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-
     parser.add_argument("-m", "--model",
                         help="A (existing?) model file to store to",
                         default='../model/command_input.pt')
@@ -232,11 +233,11 @@ def main():
     ])
     un_composed = transforms.Compose([transforms.ToTensor()])
 
-
     train_set = H5Dataset(root_dir = traindata_path,
-                          transform=un_composed)
+                          transform=composed)
+
     train_loader = torch.utils.data.DataLoader(train_set,
-                                               batch_size=64, # TODO: Decide on batchsize
+                                               batch_size=BATCH_SIZE, # TODO: Decide on batchsize
                                                shuffle=True,
                                                pin_memory=False)
 
@@ -245,42 +246,44 @@ def main():
     model = Net().to(device)
     load_model(model, model_path)
 
-    relu = F.relu
-
     optimizer = optim.Adam(model.parameters(), lr=0.0002)
 
     # criterion = nn.CrossEntropyLoss()
 
     ############### Training
     lossx = []
-    num_train_epochs = 10
+    num_train_epochs = 1
     for epoch in range(1, num_train_epochs + 1):
         train_loss = []  # empty list to store the train losses
 
         model.train()
-        for batch_idx, (data, target) in enumerate(train_loader):
-            # Move the input and target data on the GPU
-            data, target = data.to(device), target.to(device)
-            # Zero out gradients from previous step
-            optimizer.zero_grad()
-            # Forward pass of the neural net
-            output = model(data,
-                           target[:,target_idx['speed']],
-                           target[:,target_idx['command']])
-            # Calculation of the loss function
-            output_target = target[:,[target_idx['steer'],
-                                      target_idx['gas']]]  # DONE: remove magic numbers
-            loss = nn.MSELoss()(output.double(), output_target.double())
-            # Backward pass (gradient computation)
-            loss.backward()
-            # Adjusting the parameters according to the loss function
-            optimizer.step()
-            if batch_idx % 10 == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss.item()))
-            save_model(model, model_path,
-                       train_loss = loss.item())
+
+        try:
+            for batch_idx, (data, target) in enumerate(train_loader):
+                # Move the input and target data on the GPU
+                data, target = data.to(device), target.to(device)
+                # Zero out gradients from previous step
+                optimizer.zero_grad()
+                # Forward pass of the neural net
+                output = model(data,
+                               target[:,target_idx['speed']],
+                               target[:,target_idx['command']])
+                # Calculation of the loss function
+                output_target = target[:,[target_idx['steer'],
+                                          target_idx['gas']]]  # DONE: remove magic numbers
+                loss = nn.MSELoss()(output.double(), output_target.double())
+                # Backward pass (gradient computation)
+                loss.backward()
+                # Adjusting the parameters according to the loss function
+                optimizer.step()
+                if batch_idx % 10 == 0:
+                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        epoch, batch_idx * len(data), len(train_loader.dataset),
+                        100. * batch_idx / len(train_loader), loss.item()))
+        except KeyboardInterrupt:
+            pass
+        save_model(model, model_path,
+                   train_loss = loss.item())
 
 
 if  __name__=="__main__":

@@ -95,6 +95,7 @@ class H5Dataset(Dataset):
         # print(self.file_names)
         # print(len(self.file_names))
         self.file_idx = 0
+        self.current_file = None
 
     def _check_corruption(self,file_names):
         crpt_idx = []
@@ -128,12 +129,14 @@ class H5Dataset(Dataset):
         file_idx = int(idx / IMAGES_PER_FILE)
         idx = idx % IMAGES_PER_FILE
 
-        # print("Idx: {}, Type: {}".format(idx, type(idx)))  # TODO: Remove me
-        f = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
+        if (file_idx != self.file_idx
+            or self.current_file is None):
+            self.current_file = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
+            self.file_idx = file_idx
 
-        # for magic idx numers inspect class description
-        data = f['rgb'][idx]
-        targets = f['targets'][idx]
+        # for magic idx numbers inspect class description
+        data = self.current_file['rgb'][idx]
+        targets = self.current_file['targets'][idx]
 
         if self.transform:
             sample = (self.transform(data),

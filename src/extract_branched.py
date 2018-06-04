@@ -100,7 +100,7 @@ def show_image(sample, trans_en=False):
 
     # magic 24 is the position of the high level command in the target array
     # print(COMMAND_DICT[int(sample['targets'][HIGH_LEVEL_COMMAND_IDX])])
-    high_level_command = COMMAND_DICT[int(sample['targets'][HIGH_LEVEL_COMMAND_IDX])]
+    high_level_command = COMMAND_DICT[int(sample['targets'][target_idx['command']])]
 
     # magic 0 is the position of the high level command in the target array
     steering_angle = sample['targets'][STEERING_ANGLE_IDX]
