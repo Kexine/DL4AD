@@ -211,6 +211,7 @@ class Net(nn.Module):
 
 def main():
     import argparse
+    import time
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--model",
                         help="A (existing?) model file to store to",
@@ -252,7 +253,9 @@ def main():
 
     ############### Training
     lossx = []
-    num_train_epochs = 1
+    num_train_epochs = 10
+
+    start_time = time.time()
     for epoch in range(1, num_train_epochs + 1):
         train_loss = []  # empty list to store the train losses
 
@@ -277,7 +280,8 @@ def main():
                 # Adjusting the parameters according to the loss function
                 optimizer.step()
                 if batch_idx % 10 == 0:
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    print('{:.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
         except KeyboardInterrupt:
