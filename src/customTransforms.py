@@ -123,6 +123,7 @@ class RegionDropout(object):
 
     def __call__(self, img):
         for n_regions in range(self.num_regions):
+
             channels = img.shape[0]
             w_max = img.shape[1]
             h_max = img.shape[2]
@@ -136,7 +137,7 @@ class RegionDropout(object):
             y_22 = y_11 + self.h_drop
 
             # multiply with 0 to make pixel black
-            img[0:channels][x_11:x_22][y_11:y_22] = 0
+            img[0:channels, x_11:x_22, y_11:y_22] = 0
 
         return img
 

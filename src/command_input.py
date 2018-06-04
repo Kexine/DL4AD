@@ -280,7 +280,7 @@ def main():
                 # Adjusting the parameters according to the loss function
                 optimizer.step()
                 if batch_idx % 10 == 0:
-                    print('{:.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
