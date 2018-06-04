@@ -133,18 +133,15 @@ class H5Dataset(Dataset):
         f = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
 
         # for magic idx numers inspect class description
-        data = f['rgb']
-        targets = f['targets']
-        sample = {'filename' : self.file_names[file_idx],
-                  'data' : data[idx],
-                  'targets' : targets[idx]}
+        data = f['rgb'][idx]
+        targets = f['targets'][idx]
 
         if self.transform:
-            sample = (self.transform(data[idx]),
-                      torch.Tensor(targets[idx]))
+            sample = (self.transform(data),
+                      torch.Tensor(targets))
         else:
-            sample = (data[idx],
-                      targets[idx])
+            sample = (data,
+                      targets)
 
         return sample
 
@@ -152,13 +149,12 @@ class H5Dataset(Dataset):
 """ Just show pretty, enhanced samples"""
 if  __name__=="__main__":
     # dummy composition for debugging
-    composed = transforms.Compose([transforms.ToTensor(),
-                                   transforms.Normalize((0.1307,), (0.3081,)),
-                                   ContrastNBrightness(1.5,0.5),
-                                   GaussianBlur(1.5),
-                                   SaltNPepper(0.1),
-                                   GaussianNoise(0, 0.1),
-                                   RegionDropout((10, 10),10)
+    composed = RandomApplyFrlomList([transforms.Normalize((0.1307,), (0.3081,)),
+                                     ContrastNBrightness(1.5,0.5),
+                                     GaussianBlur(1.5),
+                                     SaltNPepper(0.1),
+                                     GaussianNoise(0, 0.1),
+                                     RegionDropout((10, 10),10)
     ])
     un_composed = transforms.Compose([transforms.ToTensor()])
 

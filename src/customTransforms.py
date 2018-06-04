@@ -5,6 +5,37 @@ import random
 import torch
 from scipy.ndimage import gaussian_filter
 
+class RandomApplyFrlomList(object):
+    """Apply randomly from a list of transformations with a given probability
+        Args:
+            transforms (list): list of transformations
+            mandatory (list): list of mandatory transformations
+            p (float): probability
+    """
+    def __init__(self, transforms,
+                 mandatory=None,
+                 p=0.5):
+        assert isinstance(transforms, list)
+        self.mandatory = mandatory
+        self.transforms = transforms
+        self.p = p
+
+    def __call__(self, img,
+                 verbose=False):
+        for t in self.mandatory:
+            img = t(img)
+
+        status_str = "Applied transforms:\n"
+        for t in self.transforms:
+            if self.p < random.random():
+                img = t(img)
+                status_str += "\t" + str(t) + "\n"
+        if verbose:
+            print(status_str)
+
+        return img
+
+
 class SaltNPepper(object):
     """Insert some salt and pepper grain
 
@@ -46,6 +77,7 @@ class SaltNPepper(object):
         img.masked_scatter_(pepper_mask.byte(), torch.ones(shape) - pepper_mask)
 
         return img
+
 
 class GaussianNoise(object):
     """Add Gaussian Noise to a tensor"""
