@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -148,19 +147,30 @@ class H5Dataset(Dataset):
 
 """ Just show pretty, enhanced samples"""
 if  __name__=="__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-t", "--train",
+                        help="Directory of the train data",
+                        default='../data/AgentHuman/SeqTrain')
+    args = parser.parse_args()
+
+    traindata_path = args.train
+
     # dummy composition for debugging
-    composed = RandomApplyFrlomList([transforms.Normalize((0.1307,), (0.3081,)),
-                                     ContrastNBrightness(1.5,0.5),
-                                     GaussianBlur(1.5),
-                                     SaltNPepper(0.1),
-                                     GaussianNoise(0, 0.1),
-                                     RegionDropout((10, 10),10)
-    ])
+    composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
+                                    GaussianBlur(1.5),
+                                    SaltNPepper(0.1),
+                                    GaussianNoise(0, 0.1),
+                                    RegionDropout((10, 10),10)],
+                                   mandatory=[transforms.ToTensor(),
+                                              transforms.Normalize((0.1307,), (0.3081,))])
     un_composed = transforms.Compose([transforms.ToTensor()])
 
-    train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
+    train_set = H5Dataset(root_dir = traindata_path,
+                          transform=composed)
 
-    orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
+    orig_train_set = H5Dataset(root_dir = traindata_path,
+                               transform=un_composed)
 
     browser = ImageBrowser(train_set, orig_train_set)
     browser.show()

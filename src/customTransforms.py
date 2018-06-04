@@ -5,7 +5,7 @@ import random
 import torch
 from scipy.ndimage import gaussian_filter
 
-class RandomApplyFrlomList(object):
+class RandomApplyFromList(object):
     """Apply randomly from a list of transformations with a given probability
         Args:
             transforms (list): list of transformations
@@ -14,23 +14,24 @@ class RandomApplyFrlomList(object):
     """
     def __init__(self, transforms,
                  mandatory=None,
-                 p=0.5):
+                 p=0.5,
+                 verbose=False):
         assert isinstance(transforms, list)
         self.mandatory = mandatory
         self.transforms = transforms
         self.p = p
+        self.verbose = verbose
 
-    def __call__(self, img,
-                 verbose=False):
+    def __call__(self, img):
         for t in self.mandatory:
             img = t(img)
 
         status_str = "Applied transforms:\n"
         for t in self.transforms:
-            if self.p < random.random():
+            if self.p > random.random():
                 img = t(img)
                 status_str += "\t" + str(t) + "\n"
-        if verbose:
+        if self.verbose:
             print(status_str)
 
         return img
@@ -79,6 +80,10 @@ class SaltNPepper(object):
         return img
 
 
+    def __str__(self):
+        return "Salt and Pepper transform, salt: {}, pepper:  ".format(self.amount_salt,
+                                                                       self.amount_pepper)
+
 class GaussianNoise(object):
     """Add Gaussian Noise to a tensor"""
     def __init__(self, std, mean=0):
@@ -93,6 +98,10 @@ class GaussianNoise(object):
         img = img + torch.normal(mean, std)
 
         return img
+
+    def __str__(self):
+        return "Gaussian Noise transform, μ= {}, σ= {} ".format(self.mean,
+                                                                self.std)
 
 
 class RegionDropout(object):
@@ -150,6 +159,10 @@ class RegionDropout(object):
         return img
 
 
+    def __str__(self):
+        return "Region Dropout"
+
+
 class GaussianBlur(object):
     """Convolutes image with gaussian kernel"""
     def __init__(self, sigma = 0.5):
@@ -158,6 +171,8 @@ class GaussianBlur(object):
         # apply gaussian filter and convert back to tensor
         img = torch.from_numpy(gaussian_filter(img, self.sigma, mode='constant'))
         return img
+    def __str__(self):
+        return "Gaussian Blur, σ= {}".format(self.sigma)
 
 
 class ContrastNBrightness(object):
@@ -168,3 +183,6 @@ class ContrastNBrightness(object):
 
     def __call__(self, img):
         return img * self.alpha + torch.ones(img.shape)*self.beta
+
+    def __str__(self):
+        return "Contrast n Brigntess, α= {}, β= {}".format(self.alpha, self.beta)

@@ -6,6 +6,11 @@ from matplotlib import pyplot as plt
 import random
 import torch
 
+# TODO: This is only a workaround
+target_idx = {'steer': 0,
+              'speed': 10,
+              'command': 24}
+
 class ImageBrowser:
 
     """ Get the datasets and at which index to start."""
@@ -17,15 +22,14 @@ class ImageBrowser:
         # create a random index, if none given
         if idx is None:
             idx = random.randrange(0, len(dataset1))
-        self.idx = idx
+
         self.dataset1 = dataset1
         self.dataset2 = dataset2
 
+        self.__update_index(idx)
+
         self.side_by_side = None
 
-        self.HIGH_LEVEL_COMMAND_IDX = 24
-        self.STEER_IDX = 0
-        self.SPEED_IDX = 10 # float
         self.COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
         self.SPEED_LIMIT_VISUAL = 5
@@ -34,18 +38,24 @@ class ImageBrowser:
         self.radius = 25
         self.max_speed = 30
 
+    def __update_index(self, idx):
+        # truncate at beginning and end of the dataset
+        idx = max(idx, 0)
+        idx = min(idx, len(self.dataset1))
+
+        self.idx = idx
+        self.current_target = self.dataset1[self.idx][1]
+
     def cmd2verbose(self):
-        cmd = self.dataset1[self.idx]['targets'][self.HIGH_LEVEL_COMMAND_IDX]
+        cmd = int(self.current_target[target_idx['command']])
         return self.COMMAND_DICT[cmd]
 
     # draw the current steering angle as arrow
     def draw_angle(self):
-        rad = self.dataset1[self.idx]['targets'][self.STEER_IDX]
-        speed = self.dataset1[self.idx]['targets'][self.SPEED_IDX]
+        rad = self.current_target[target_idx['steer']]
+        speed = self.current_target[target_idx['speed']]
         # speed_norm = self.radius /(speed+self.radius) * self.radius
-        print(speed)
         speed_norm = speed/(self.radius)
-        print(speed_norm)
         if speed>self.SPEED_LIMIT_VISUAL:
             dx = np.cos(rad - np.pi/2) * speed
             dy = np.sin(rad - np.pi/2) * speed
@@ -68,13 +78,18 @@ class ImageBrowser:
 
     # create title for diagram with meta information
     def make_title(self):
-        filename = self.dataset1[self.idx]['filename']
+        file_idx = int(self.idx/200)
         image_idx =  self.idx%200
-        st_angle = self.dataset1[self.idx]['targets'][self.STEER_IDX]
-        speed = self.dataset1[self.idx]['targets'][self.SPEED_IDX]
+
+        filename = "data_{:05d}.h5".format(file_idx)
+
+        target = self.current_target
+
+        st_angle = target[target_idx['steer']]
+        speed = target[target_idx['speed']]
         verbose_cmd = self.cmd2verbose()
-        return plt.title("File: {}| Image {}\n Steering Angle: {:.4f}| Speed: {:.2f}\n Command {}".format(
-                    filename, image_idx, st_angle,speed, verbose_cmd))
+        plt.title("File: {}| Image {}\n Steering Angle: {:.4f}| Speed: {:.2f}\n Command {}"\
+                  .format(filename, image_idx, st_angle,speed, verbose_cmd))
 
     def draw_arrow(self):
         verbose_cmd = self.cmd2verbose()
@@ -91,16 +106,12 @@ class ImageBrowser:
 
     def process_key(self, event):
         if event.key == 'left' or event.key == 'down':
-            self.idx = max(self.idx - 1, 0)
+            self.__update_index(self.idx - 1)
         elif event.key == 'right' or event.key == 'up':
-            self.idx = min(self.idx + 1, len(self.dataset1))
+            self.__update_index(self.idx + 1)
         elif event.key == 'r':
-            self.idx = random.randrange(0, len(self.dataset1))
+            self.__update_idx(random.randrange(0, len(self.dataset1)))
             print("New Index: {}".format(self.idx))
-        elif event.key == '+':
-            self.scaling_factor += 0.1
-        elif event.key == '-':
-            self.scaling_factor -= 0.1
         else:
             return
 
@@ -114,8 +125,8 @@ class ImageBrowser:
         plt.draw()
 
     def create_sidebyside(self):
-        img1 = self.dataset1[self.idx]['data']
-        img2 = self.dataset2[self.idx]['data']
+        img1 = self.dataset1[self.idx][0]
+        img2 = self.dataset2[self.idx][0]
         result = torch.cat((img1, img2),
                          dim = 2).numpy() # .transpose((1,2,0))
 

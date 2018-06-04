@@ -42,7 +42,7 @@ warnings.filterwarnings("ignore")
 
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
-def load_model(model_path):
+def load_model(model, model_path):
     '''
     Check if a pre trained model exists and load it if found
     '''
@@ -207,9 +207,21 @@ class Net(nn.Module):
         return action
 
 
-if  __name__=="__main__":
-    model_path = '../model/command_input.pt'
-    # dummy composition for debugging
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-m", "--model",
+                        help="A (existing?) model file to store to",
+                        default='../model/command_input.pt')
+    parser.add_argument("-t", "--train",
+                        help="Directory of the train data",
+                        default='../data/AgentHuman/SeqTrain')
+    args = parser.parse_args()
+
+    model_path = args.model
+    traindata_path = args.train
+
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
                                    ContrastNBrightness(1.5,0.5),
@@ -221,7 +233,8 @@ if  __name__=="__main__":
     un_composed = transforms.Compose([transforms.ToTensor()])
 
 
-    train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
+    train_set = H5Dataset(root_dir = traindata_path,
+                          transform=un_composed)
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=64, # TODO: Decide on batchsize
                                                shuffle=True,
@@ -230,8 +243,7 @@ if  __name__=="__main__":
     # orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
 
     model = Net().to(device)
-    load_model(model_path)
-
+    load_model(model, model_path)
 
     relu = F.relu
 
@@ -269,3 +281,7 @@ if  __name__=="__main__":
                     100. * batch_idx / len(train_loader), loss.item()))
             save_model(model, model_path,
                        train_loss = loss.item())
+
+
+if  __name__=="__main__":
+    main()
