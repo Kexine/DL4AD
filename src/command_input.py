@@ -306,10 +306,10 @@ def main():
                         100. * batch_idx / len(train_loader), loss.item()))
 
                     # ---------- Validation every time we print out
-                    # model.eval()
-                    # with torch.no_grad():
-                    #     for eval_idx in range(split_idx, len(train_loader)):
-                    #         eval_data = train_loader[eval_idx][0].to()
+                    model.eval()
+                    with torch.no_grad():
+                        for eval_idx, (data_e, target_e) in enumerate(eval_loader)):
+                            pass
 
 
         except KeyboardInterrupt:
