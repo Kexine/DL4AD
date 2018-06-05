@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import torch
-import torch.nn.modules.loss
+# import torch.nn as nn
+from torch.nn.modules.loss import MSELoss, _assert_no_grad
 
-class WeightedMSELoss(_loss):
+class WeightedMSELoss(MSELoss):
     """Creates a criterion that measures the weighted mean squared error between
     `n` elements in the input `x` and target `y`.
 
@@ -34,7 +35,12 @@ class WeightedMSELoss(_loss):
                 size_average=True,
                 reduce = True):
         _assert_no_grad(target)
-        l = torch.mm(weight_matrix, (input - target)**2)
+
+        assert input.requires_grad, \
+            "your input should require a grad"
+
+
+        l = torch.mm((input - target)**2, weight_matrix)
 
         if not self.reduce:
             return l

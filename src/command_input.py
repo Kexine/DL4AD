@@ -28,6 +28,7 @@ from torchvision import datasets, transforms
 from customTransforms import *
 from ImageHandling import ImageBrowser
 from Extractor import H5Dataset, target_idx
+from CustomLoss import WeightedMSELoss
 
 import warnings
 torch.manual_seed(1)
@@ -254,8 +255,13 @@ def main():
     ############### Training
     lossx = []
     num_train_epochs = 10
+ 
 
-    lambda_sqrt = np.sqrt(0.25)  # TODO: Find a good value
+    weights = torch.eye(2)
+    weights[1,1] = 0.5  # this is the strange lambda
+    weights = weights.to(device)
+
+    loss_function = WeightedMSELoss()
 
     start_time = time.time()
     for epoch in range(1, num_train_epochs + 1):
@@ -274,17 +280,13 @@ def main():
                                target[:,target_idx['speed']],
                                target[:,target_idx['command']])
 
-                # in the paper, they had some strange, undocumented
-                # lambda at the MSElos
-                output[:,1] = output[:,1]*lambda_sqrt
-
                 # Calculation of the loss function
                 output_target = target[:,[target_idx['steer'],
                                           target_idx['gas']]]  # DONE: remove magic numbers
-                output_target[:,1] = output_target[:,1]*lambda_sqrt
 
-                loss = nn.MSELoss()(output.double(),
-                                    output_target.double())
+                loss = loss_function(output.double(),
+                                     output_target.double(),
+                                     weights.double())
                 # Backward pass (gradient computation)
                 loss.backward()
                 # Adjusting the parameters according to the loss function
