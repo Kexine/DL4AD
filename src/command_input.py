@@ -255,6 +255,8 @@ def main():
     lossx = []
     num_train_epochs = 10
 
+    lambda_sqrt = np.sqrt(0.25)  # TODO: Find a good value
+
     start_time = time.time()
     for epoch in range(1, num_train_epochs + 1):
         train_loss = []  # empty list to store the train losses
@@ -271,10 +273,18 @@ def main():
                 output = model(data,
                                target[:,target_idx['speed']],
                                target[:,target_idx['command']])
+
+                # in the paper, they had some strange, undocumented
+                # lambda at the MSElos
+                output[:,1] = output[:,1]*lambda_sqrt
+
                 # Calculation of the loss function
                 output_target = target[:,[target_idx['steer'],
                                           target_idx['gas']]]  # DONE: remove magic numbers
-                loss = nn.MSELoss()(output.double(), output_target.double())
+                output_target[:,1] = output_target[:,1]*lambda_sqrt
+
+                loss = nn.MSELoss()(output.double(),
+                                    output_target.double())
                 # Backward pass (gradient computation)
                 loss.backward()
                 # Adjusting the parameters according to the loss function
@@ -285,7 +295,11 @@ def main():
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
         except KeyboardInterrupt:
-            pass
+            print("Abort detected! Saving the model and exiting")
+            save_model(model, model_path,
+                   train_loss = loss.item())
+            return
+
         save_model(model, model_path,
                    train_loss = loss.item())
 

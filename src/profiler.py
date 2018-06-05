@@ -4,13 +4,30 @@
 
 import cProfile, pstats, io
 
-import command_input
+# import command_input
+from Extractor import H5Dataset
+from customTransforms import *
+from torchvision import transforms
 
 pr = cProfile.Profile()
-pr.enable()
+
+# dummy composition for debugging
+composed = transforms.Compose([transforms.ToTensor(),
+                               transforms.Normalize((0.1307,), (0.3081,)),
+                               ContrastNBrightness(1.5,0.5),
+                               GaussianBlur(1.5),
+                               SaltNPepper(0.1),
+                               GaussianNoise(0, 0.1),
+                               RegionDropout((10, 10),10)])
+train_set = H5Dataset(root_dir = '/home/flosmanm/data/AgentHuman/SeqTrain',
+                      transform=composed)
+
 
 try:
-    command_input.main()
+    pr.enable()
+    for i in range(len(train_set)):
+        foo = train_set[i]
+    # command_input.main()
 except KeyboardInterrupt:
     pass
 
