@@ -6,7 +6,6 @@ Project 4: Exercise sheet 3, Task 1
 Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 """
 
-#!/usr/bin/env python3
 from __future__ import print_function, division
 import h5py
 import cv2
@@ -22,12 +21,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.dataset import random_split
 from torchvision import datasets, transforms
 
 # our custom modules
 from customTransforms import *
 from ImageHandling import ImageBrowser
-from Extractor import H5Dataset, target_idx
+from Extractor import H5Dataset, target_idx, better_random_split
 from CustomLoss import WeightedMSELoss
 
 import warnings
@@ -225,23 +225,19 @@ def main():
     model_path = args.model
     traindata_path = args.train
 
-    composed = transforms.Compose([transforms.ToTensor(),
-                                   transforms.Normalize((0.1307,), (0.3081,)),
-                                   ContrastNBrightness(1.5,0.5),
+    composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
                                    GaussianBlur(1.5),
                                    SaltNPepper(0.1),
                                    GaussianNoise(0, 0.1),
-                                   RegionDropout((10, 10),10)
-    ])
+                                   RegionDropout((10, 10),10)],
+                                   mandatory=[transforms.ToTensor(),
+                                              transforms.Normalize((0.1307,), (0.3081,))])
     un_composed = transforms.Compose([transforms.ToTensor()])
 
     train_set = H5Dataset(root_dir = traindata_path,
                           transform=composed)
-
-    train_loader = torch.utils.data.DataLoader(train_set,
-                                               batch_size=BATCH_SIZE, # TODO: Decide on batchsize
-                                               shuffle=True,
-                                               pin_memory=False)
+    eval_set = H5Dataset(root_dir = traindata_path,
+                         transform=un_composed)
 
     # orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
 
@@ -254,25 +250,37 @@ def main():
 
     ############### Training
     lossx = []
-    num_train_epochs = 10
- 
+    num_train_epochs = 6
 
     weights = torch.eye(2)
-    weights[1,1] = 0.5  # this is the strange lambda
+    weights[0,0] = 0.7
+    weights[1,1] = 0.3  # this is the strange lambda
     weights = weights.to(device)
 
     loss_function = WeightedMSELoss()
 
     start_time = time.time()
+
     for epoch in range(1, num_train_epochs + 1):
-        train_loss = []  # empty list to store the train losses
+        train_set, eval_set = better_random_split(train_set,
+                                                  eval_set,
+                                                  0.8)
+        train_loader = torch.utils.data.DataLoader(train_set,
+                                                   batch_size=BATCH_SIZE, # TODO: Decide on batchsize
+                                                   shuffle=False,
+                                                   pin_memory=False)
+
+        eval_loader = torch.utils.data.DataLoader(eval_set,
+                                                  batch_size=BATCH_SIZE,
+                                                  shuffle=False)
 
         model.train()
 
         try:
             for batch_idx, (data, target) in enumerate(train_loader):
                 # Move the input and target data on the GPU
-                data, target = data.to(device), target.to(device)
+                data = data.to(device)
+                target = target.to(device)
                 # Zero out gradients from previous step
                 optimizer.zero_grad()
                 # Forward pass of the neural net
@@ -296,10 +304,18 @@ def main():
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
+
+                    # ---------- Validation every time we print out
+                    # model.eval()
+                    # with torch.no_grad():
+                    #     for eval_idx in range(split_idx, len(train_loader)):
+                    #         eval_data = train_loader[eval_idx][0].to()
+
+
         except KeyboardInterrupt:
-            print("Abort detected! Saving the model and exiting")
+            print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
             save_model(model, model_path,
-                   train_loss = loss.item())
+                       train_loss = loss.item())
             return
 
         save_model(model, model_path,

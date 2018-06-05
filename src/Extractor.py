@@ -13,6 +13,8 @@ import cv2
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.dataset import Subset
+from torch import randperm
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import os, os.path
@@ -146,6 +148,24 @@ class H5Dataset(Dataset):
                       targets)
 
         return sample
+
+def better_random_split(dataset_enhanced,
+                        dataset_clean,
+                        fraction):
+    """
+    Randomly split a dataset into non-overlapping new datasets of given lengths... but better!
+
+    Arguments:
+        dataset_enhanced: The dataset with transforms
+        dataset_clean: the dataset with only the necessary transforms
+        fraction: the amount of data to be split
+    """
+    assert fraction < 1, "Fraction should be < 1"
+    assert len(dataset_enhanced) == len(dataset_clean)
+
+    indices = randperm(len(dataset_enhanced))
+    split_idx = int(fraction * len(dataset_enhanced))
+    return Subset(dataset_enhanced, indices[:split_idx]), Subset(dataset_clean, indices[split_idx:])
 
 
 """ Just show pretty, enhanced samples"""
