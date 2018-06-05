@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 Deep Learning in Autonomous Driving
-Project 4: Exercise sheet 3, Task 2
+Project 4: Exercise sheet 3, Task 3
 Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 """
 
-#!/usr/bin/env python3
 from __future__ import print_function, division
 import h5py
 import cv2
@@ -111,7 +110,7 @@ class Net(nn.Module):
         
         #5 for action output
         self.fc8= nn.Linear(256,2)
-        self.fc9= nn.Linear(256,1)
+        
         
         
     def forward(self, x,speed):
@@ -158,7 +157,7 @@ class Net(nn.Module):
         
         ###################################
         
-        x = x.view(-1, 25*11*256)      ### do change this
+        x = x.view(-1, 25*11*256)
         
         #########fully connected layers####
         x = self.fc1(x)
@@ -189,21 +188,16 @@ class Net(nn.Module):
         j= self.fc_drop(j)
         j = F.relu(j)
         
-        ####initiating branches############
-        branch_config = [["Steer", "Gas"],["Steer", "Gas"], ["Steer", "Gas"],["Steer", "Gas"]]
-        ###there were 5 in the code they made, dontn have idea why####
-        branches=[]
-        for i in range(0, len(branch_config)):
-            branch_output = self.fc6(j)
-            branch_output= self.fc_drop(branch_output)
-            branch_output = F.relu(branch_output)
-            branch_output = self.fc7(branch_output)
-            branch_output= self.fc_drop(branch_output)
-            branch_output = F.relu(branch_output)
-            branches.append(self.fc8(branch_output))
-        #have to look for this regarding the dataset , on how to use it?
+        actions = self.fc6(j)
+        actions= self.fc_drop(actions)
+        actions = F.relu(actions)
+        actions = self.fc7(actions)
+        actions= self.fc_drop(actions)
+        actions = F.relu(actions)
+        actions= self.fc8(actions)
+        #hae to look for this regarding the dataset , on how to use it?
         
-        return branches
+        return actions
 
 
 def main():
@@ -212,7 +206,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--model",
                         help="A (existing?) model file to store to",
-                        default='../model/branched.pt')
+                        default='../model/without_imitation.pt')
     parser.add_argument("-t", "--train",
                         help="Directory of the train data",
                         default='../data/AgentHuman/SeqTrain')
@@ -257,34 +251,20 @@ def main():
                 data, target = data.to(device), target.to(device)
                 # Zero out gradients from previous step
                 optimizer.zero_grad()
-                # Forward pass of the neural net
-                output_branches = model(data,
-                               target[:,target_idx['speed']])
-                
+                output = model(data,
+                              target[:,target_idx['speed']])
                 # Calculation of the loss function
-                for c in range(0,len(target[0].shape)):
-                    output_target = target[:,[target_idx['steer'],
-                                          target_idx['gas']]] 
-                    if target[c,target_idx['command']] == 2:
-                        output = output_branches[0]
-                        
-                    if target[c,target_idx['command']] == 3:
-                        output = output_branches[1]
-                    if target[c,target_idx['command']] == 4:
-                        output = output_branches[2]
-                    if target[c,target_idx['command']] == 5:
-                        output = output_branches[3]
-                    loss = nn.MSELoss()(output.double(), output_target.double())
-                    # Backward pass (gradient computation)
-                    loss.backward()
-                    # Adjusting the parameters according to the loss function
-                    optimizer.step()
-                    if batch_idx % 10 == 0:
-                        print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        time.time() - start_time,
+                output_target = target[:,[target_idx['steer'],
+                                         target_idx['gas']]]
+                loss = nn.MSELoss()(output.double(), output_target.double())
+                # Backward pass (gradient computation)
+                loss.backward()
+                # Adjusting the parameters according to the loss function
+                optimizer.step()
+                if batch_idx % 10 == 0:
+                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-        
         except KeyboardInterrupt:
             pass
         save_model(model, model_path,
@@ -292,3 +272,4 @@ def main():
 
 if  __name__=="__main__":
     main()
+
