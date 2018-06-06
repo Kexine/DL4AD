@@ -226,13 +226,12 @@ def main():
     traindata_path = args.train
 
     composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
-                                   GaussianBlur(1.5),
-                                   SaltNPepper(0.1),
-                                   GaussianNoise(0, 0.1),
-                                   RegionDropout((10, 10),10)],
-                                   mandatory=[transforms.ToTensor(),
-                                              transforms.Normalize((0.1307,), (0.3081,))])
-    un_composed = transforms.Compose([transforms.ToTensor()])
+                                    GaussianBlur(1.5),
+                                    SaltNPepper(0.1),
+                                    GaussianNoise(0, 0.1),
+                                    RegionDropout((10, 10),10)],
+                                   normalize = True)
+    un_composed = transforms.Compose([JustNormalize(std=1)])
 
     train_set = H5Dataset(root_dir = traindata_path,
                           transform=composed)
@@ -263,8 +262,8 @@ def main():
 
     for epoch in range(1, num_train_epochs + 1):
         train_split, eval_split = better_random_split(train_set,
-                                                  eval_set,
-                                                  0.8)
+                                                      eval_set,
+                                                      0.8)
         train_loader = torch.utils.data.DataLoader(train_split,
                                                    batch_size=BATCH_SIZE, # TODO: Decide on batchsize
                                                    shuffle=False,

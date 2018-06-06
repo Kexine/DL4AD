@@ -19,8 +19,15 @@ composed = transforms.Compose([transforms.ToTensor(),
                                SaltNPepper(0.1),
                                GaussianNoise(0, 0.1),
                                RegionDropout((10, 10),10)])
+
+randomized = RandomApplyFromList([None],
+                                 p=0.0,
+                                 normalize=True,
+                                 mandatory=[transforms.ToTensor(),
+                                            transforms.Normalize((0.1,), (1.0,))])
+
 train_set = H5Dataset(root_dir = '/home/flosmanm/data/AgentHuman/SeqTrain',
-                      transform=composed)
+                      transform=randomized)
 
 
 try:

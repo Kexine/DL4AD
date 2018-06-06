@@ -3,6 +3,8 @@
 import numpy as np
 import random
 import torch
+from sklearn.preprocessing import StandardScaler
+import torchvision.transforms as ptt
 from scipy.ndimage import gaussian_filter
 
 class RandomApplyFromList(object):
@@ -15,16 +17,28 @@ class RandomApplyFromList(object):
     def __init__(self, transforms,
                  mandatory=None,
                  p=0.5,
-                 verbose=False):
+                 verbose=False,
+                 normalize=True,
+                 std=None):
         assert isinstance(transforms, list)
         self.mandatory = mandatory
         self.transforms = transforms
         self.p = p
         self.verbose = verbose
+        self.normalize = normalize
+        self.std = std
 
     def __call__(self, img):
-        for t in self.mandatory:
-            img = t(img)
+        if self.normalize:
+            img = ptt.ToTensor()(img)
+            if self.std:
+                std = self.std
+            else:
+                std = img.std()
+            img = ptt.Normalize([img.mean()], [std])(img)
+        elif self.mandatory:
+            for t in self.mandatory:
+                img = t(img)
 
         status_str = "Applied transforms:\n"
         for t in self.transforms:
@@ -33,6 +47,21 @@ class RandomApplyFromList(object):
                 status_str += "\t" + str(t) + "\n"
         if self.verbose:
             print(status_str)
+
+        return img
+
+
+class JustNormalize(object):
+    def __init__(self, std=None):
+        self.std = std
+
+    def __call__(self, img):
+        img = ptt.ToTensor()(img)
+        if self.std:
+            std = self.std
+        else:
+            std = img.std()
+        img = ptt.Normalize([img.mean()], [std])(img)
 
         return img
 
