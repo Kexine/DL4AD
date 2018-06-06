@@ -4,7 +4,7 @@
 
 import cProfile, pstats, io
 
-# import command_input
+import command_input
 from Extractor import H5Dataset
 from customTransforms import *
 from torchvision import transforms
@@ -29,12 +29,15 @@ randomized = RandomApplyFromList([None],
 train_set = H5Dataset(root_dir = '/home/flosmanm/data/AgentHuman/SeqTrain',
                       transform=randomized)
 
+profiling = "command_input"
 
 try:
     pr.enable()
-    for i in range(len(train_set)):
-        foo = train_set[i]
-    # command_input.main()
+    if profiling == "transforms":
+        for i in range(len(train_set)):
+            foo = train_set[i]
+    elif profiling == "command_input":
+        command_input.main()
 except KeyboardInterrupt:
     pass
 

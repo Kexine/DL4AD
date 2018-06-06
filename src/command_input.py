@@ -213,6 +213,29 @@ class Net(nn.Module):
         return action
 
 
+def evaluate(model,
+             eval_loader,
+             loss_function,
+             weights):
+    with torch.no_grad():
+        loss = 0
+        for eval_idx, (data, target) in enumerate(eval_loader):
+            print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
+                  end="", flush=True)
+            data, target = data.to(device), target.to(device)
+            output = model(data,
+                           target[:,target_idx['speed']],
+                           target[:,target_idx['command']])
+            output_target = target[:,[target_idx['steer'],
+                                      target_idx['gas']]]
+            loss += loss_function(output.double(),
+                                  output_target.double(),
+                                  weights.double()).item()
+
+    avg_loss = loss/len(eval_loader)
+    return avg_loss
+
+
 def main():
     import argparse
     import time
@@ -223,10 +246,15 @@ def main():
     parser.add_argument("-t", "--train",
                         help="Directory of the train data",
                         default='../data/AgentHuman/SeqTrain')
+    parser.add_argument("-e", "--evalrate",
+                        help="Evaluate every [N] training batches",
+                        default=200,
+                        type=int)
     args = parser.parse_args()
 
     model_path = args.model
     traindata_path = args.train
+    eval_rate = args.evalrate
 
     composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
                                     GaussianBlur(1.5),
@@ -250,14 +278,9 @@ def main():
 
     # criterion = nn.CrossEntropyLoss()
 
-
-
-
     ############### Training
     lossx = []
     num_train_epochs = 5
-
-
 
     weights = torch.eye(2)
     weights[0,0] = 0.7
@@ -273,8 +296,6 @@ def main():
     # show loss each after m batches
     BATCH_LOSS_RATE = 100
     # evaluate each after n batches
-    EVAL_RATE = 200
-
 
     for epoch in range(1, num_train_epochs + 1):
         train_split, eval_split = better_random_split(train_set,
@@ -290,11 +311,10 @@ def main():
                                                   shuffle=False)
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
-        print("Batch Size: {}\t| Eval Rate: {}".format(BATCH_SIZE, EVAL_RATE))
+        print("Batch Size: {}\t| Eval Rate: {}".format(BATCH_SIZE, eval_rate))
         print("Splitted Training Set:")
         print("{} Training Samples\t| {} Evaluation Samples".format(len(train_split), len(eval_split)))
         print("{} Training Batches\t| {} Evaluation Batches".format(len(train_loader), len(eval_loader)))
-
         print("---------------------------------------------------------------")
         model.train()
 
@@ -329,40 +349,24 @@ def main():
                     save_model(model, model_path,
                                train_loss = loss.item())
 
-
-            # ---------- Validation after n batches
-                if batch_idx % EVAL_RATE == 0 and batch_idx != 0:
+                # ---------- Validation after n batches
+                if batch_idx % eval_rate == 0 and batch_idx != 0:
                     print("---------------------------------------------------------------")
                     model.eval()
-                    with torch.no_grad():
-                        loss_e = 0
-                        for eval_idx, (data_e, target_e) in enumerate(eval_loader):
-                            print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100), end="", flush=True)
-                            data_e, target_e = data_e.to(device), target_e.to(device)
-                            output_e = model(data_e,
-                                             target_e[:,target_idx['speed']],
-                                             target_e[:,target_idx['command']])
-                            output_target_e = target_e[:,[target_idx['steer'],
-                                                          target_idx['gas']]]
-                            loss_e += loss_function(output_e.double(),
-                                                   output_target_e.double(),
-                                                   weights.double())
-
-                            # if eval_idx % 10  == 0 and batch_idx != 0:
-                            #     print("Eval loss: {}".format(loss_e/len(eval_loader)))
-
-                        avg_loss = loss_e/len(eval_loader)
-                        print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time, avg_loss))
-                        print("---------------------------------------------------------------")
-                        csv_path_eval_loss = '../model/eval_loss.csv'
-                        if loss_e is not None:
-                            df_eval_loss = pd.DataFrame([loss_e.item()])
-                            with open(csv_path_eval_loss, 'a') as f:
-                                df_eval_loss.to_csv(f,
-                                          sep="\t",
-                                          header=False,
-                                          index=False)
-
+                    avg_loss = evaluate(model,
+                                        eval_loader,
+                                        loss_function,
+                                        weights)
+                    print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time, avg_loss))
+                    print("---------------------------------------------------------------")
+                    csv_path_eval_loss = model_path.replace('.pt', '_evalloss.csv')
+                    if avg_loss is not None:
+                        df_eval_loss = pd.DataFrame([avg_loss])
+                        with open(csv_path_eval_loss, 'a') as f:
+                            df_eval_loss.to_csv(f,
+                                                sep="\t",
+                                                header=False,
+                                                index=False)
         except KeyboardInterrupt:
             print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
             save_model(model, model_path,
