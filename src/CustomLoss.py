@@ -36,10 +36,6 @@ class WeightedMSELoss(MSELoss):
                 reduce = True):
         _assert_no_grad(target)
 
-        assert input.requires_grad, \
-            "your input should require a grad"
-
-
         l = torch.mm((input - target)**2, weight_matrix)
 
         if not self.reduce:

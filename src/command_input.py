@@ -262,15 +262,15 @@ def main():
     start_time = time.time()
 
     for epoch in range(1, num_train_epochs + 1):
-        train_set, eval_set = better_random_split(train_set,
+        train_split, eval_split = better_random_split(train_set,
                                                   eval_set,
                                                   0.8)
-        train_loader = torch.utils.data.DataLoader(train_set,
+        train_loader = torch.utils.data.DataLoader(train_split,
                                                    batch_size=BATCH_SIZE, # TODO: Decide on batchsize
                                                    shuffle=False,
                                                    pin_memory=False)
 
-        eval_loader = torch.utils.data.DataLoader(eval_set,
+        eval_loader = torch.utils.data.DataLoader(eval_split,
                                                   batch_size=BATCH_SIZE,
                                                   shuffle=False)
 
@@ -305,11 +305,20 @@ def main():
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
 
-                    # ---------- Validation every time we print out
-                    model.eval()
-                    with torch.no_grad():
-                        for eval_idx, (data_e, target_e) in enumerate(eval_loader)):
-                            pass
+            # ---------- Validation after each epoch
+            model.eval()
+            with torch.no_grad():
+                for eval_idx, (data_e, target_e) in enumerate(eval_loader):
+                    data_e, target_e = data_e.to(device), target_e.to(device)
+                    output_e = model(data_e,
+                                     target_e[:,target_idx['speed']],
+                                     target_e[:,target_idx['command']])
+                    output_target_e = target_e[:,[target_idx['steer'],
+                                                  target_idx['gas']]]
+                    loss_e = loss_function(output_e.double(),
+                                           output_target_e.double(),
+                                           weights.double())
+                    print("Eval loss: {}".format(loss_e))
 
 
         except KeyboardInterrupt:
