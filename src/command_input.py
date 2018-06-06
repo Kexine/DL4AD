@@ -30,10 +30,13 @@ from ImageHandling import ImageBrowser
 from Extractor import H5Dataset, target_idx, better_random_split
 from CustomLoss import WeightedMSELoss
 
+import sys
+
 import warnings
 torch.manual_seed(1)
 
-BATCH_SIZE = 128
+
+
 
 # define the cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -247,9 +250,14 @@ def main():
 
     # criterion = nn.CrossEntropyLoss()
 
+
+
+
     ############### Training
     lossx = []
-    num_train_epochs = 6
+    num_train_epochs = 5
+
+
 
     weights = torch.eye(2)
     weights[0,0] = 0.7
@@ -259,6 +267,14 @@ def main():
     loss_function = WeightedMSELoss()
 
     start_time = time.time()
+
+
+    BATCH_SIZE = 128
+    # show loss each after m batches
+    BATCH_LOSS_RATE = 100
+    # evaluate each after n batches
+    EVAL_RATE = 200
+
 
     for epoch in range(1, num_train_epochs + 1):
         train_split, eval_split = better_random_split(train_set,
@@ -272,7 +288,14 @@ def main():
         eval_loader = torch.utils.data.DataLoader(eval_split,
                                                   batch_size=BATCH_SIZE,
                                                   shuffle=False)
+        print("---------------------------------------------------------------")
+        print("EPOCH {}".format(epoch))
+        print("Batch Size: {}\t| Eval Rate: {}".format(BATCH_SIZE, EVAL_RATE))
+        print("Splitted Training Set:")
+        print("{} Training Samples\t| {} Evaluation Samples".format(len(train_split), len(eval_split)))
+        print("{} Training Batches\t| {} Evaluation Batches".format(len(train_loader), len(eval_loader)))
 
+        print("---------------------------------------------------------------")
         model.train()
 
         try:
@@ -298,27 +321,47 @@ def main():
                 loss.backward()
                 # Adjusting the parameters according to the loss function
                 optimizer.step()
-                if batch_idx % 10 == 0:
+                if batch_idx % BATCH_LOSS_RATE  == 0 and batch_idx != 0:
                     print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
+                    save_model(model, model_path,
+                               train_loss = loss.item())
 
-            # ---------- Validation after each epoch
-            model.eval()
-            with torch.no_grad():
-                for eval_idx, (data_e, target_e) in enumerate(eval_loader):
-                    data_e, target_e = data_e.to(device), target_e.to(device)
-                    output_e = model(data_e,
-                                     target_e[:,target_idx['speed']],
-                                     target_e[:,target_idx['command']])
-                    output_target_e = target_e[:,[target_idx['steer'],
-                                                  target_idx['gas']]]
-                    loss_e = loss_function(output_e.double(),
-                                           output_target_e.double(),
-                                           weights.double())
-                    print("Eval loss: {}".format(loss_e))
 
+            # ---------- Validation after n batches
+                if batch_idx % EVAL_RATE == 0 and batch_idx != 0:
+                    print("---------------------------------------------------------------")
+                    model.eval()
+                    with torch.no_grad():
+                        loss_e = 0
+                        for eval_idx, (data_e, target_e) in enumerate(eval_loader):
+                            print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100), end="", flush=True)
+                            data_e, target_e = data_e.to(device), target_e.to(device)
+                            output_e = model(data_e,
+                                             target_e[:,target_idx['speed']],
+                                             target_e[:,target_idx['command']])
+                            output_target_e = target_e[:,[target_idx['steer'],
+                                                          target_idx['gas']]]
+                            loss_e += loss_function(output_e.double(),
+                                                   output_target_e.double(),
+                                                   weights.double())
+
+                            # if eval_idx % 10  == 0 and batch_idx != 0:
+                            #     print("Eval loss: {}".format(loss_e/len(eval_loader)))
+
+                        avg_loss = loss_e/len(eval_loader)
+                        print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time, avg_loss))
+                        print("---------------------------------------------------------------")
+                        csv_path_eval_loss = '../model/eval_loss.csv'
+                        if loss_e is not None:
+                            df_eval_loss = pd.DataFrame([loss_e.item()])
+                            with open(csv_path_eval_loss, 'a') as f:
+                                df_eval_loss.to_csv(f,
+                                          sep="\t",
+                                          header=False,
+                                          index=False)
 
         except KeyboardInterrupt:
             print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
