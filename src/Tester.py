@@ -63,8 +63,10 @@ if __name__=="__main__":
     agent = Agent(model_path, 'command_input')
 
     # arrays for storing predictions and ground truth
-    pred = np.empty((len(test_set), 2))
-    truth = np.empty((len(test_set), 2))
+    length = len(test_set)
+
+    pred = np.empty((length, 2))
+    truth = np.empty((length, 2))
 
     print("Applying model...")
     if progressbar is not None:
@@ -83,22 +85,27 @@ if __name__=="__main__":
         if progressbar is not None:
             bar.update(idx)
 
-    mse = np.sum((pred - truth)**2,
+    error = pred - truth
+
+    mse = np.sum((error)**2,
                  axis=0)
 
-    error = np.diff((truth, pred), axis = 0)
     mean = error.mean(axis=0)
     median = error[int(error.shape[0]/2), :]
 
-    print("MSE:\t{}\nMean:\t{}\nMedian:\t{}".format(mse,
-                                                    error.mean(axis=0),
-                                                    median))
+    print("MSE:\t{}\nMean error:\t{}\nMedian error:\t{}".format(mse,
+                                                                error.mean(axis=0),
+                                                                median))
 
     print("storing to csv...")
     df = pd.DataFrame({'pred_steer': pred[:,0],
                        'pred_gas': pred[:,1],
                        'truth_steer': truth[:,0],
-                       'truth_gas': truth[:,1]})
+                       'truth_gas': truth[:,1],
+                       'abs_error_steer': error[:,0],
+                       'abs_error_gas': error[:,1],
+                       'rel_error_steer': error[:,0]/truth[:,0],
+                       'rel_error_gas': error[:,1]/truth[:,1]})
     df.to_csv(model_path.replace(".pt","") + ".csv",
               sep="\t",
               index=False)
