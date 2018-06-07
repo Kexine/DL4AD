@@ -239,11 +239,6 @@ def evaluate(model,
     return avg_loss
 
 
-<<<<<<< Updated upstream
-def main(model_path,
-         traindata_path,
-         eval_rate=200):
-=======
 def main():
     import argparse
     import time
@@ -314,7 +309,6 @@ def main():
 
     # show loss each after m batches
     BATCH_LOSS_RATE = 1
-    # evaluate each after n batches
 
     for epoch in range(1, num_train_epochs + 1):
         train_split, eval_split = optimized_split(train_set,
@@ -360,7 +354,7 @@ def main():
                 loss.backward()
                 # Adjusting the parameters according to the loss function
                 optimizer.step()
-                if batch_idx % eval_rate  == 0 and batch_idx != 0:
+                if batch_idx % BATCH_LOSS_RATE  == 0 and batch_idx != 0:
                     print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -400,25 +394,4 @@ def main():
 
 
 if  __name__=="__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model",
-                        help="A (existing?) model file to store to",
-                        default='../model/command_input.pt')
-    parser.add_argument("-t", "--train",
-                        help="Directory of the train data",
-                        default='../data/AgentHuman/SeqTrain')
-    parser.add_argument("-e", "--evalrate",
-                        help="Evaluate every [N] training batches",
-                        default=200,
-                        type=int)
-    args = parser.parse_args()
-
-    model_path = args.model
-    traindata_path = args.train
-    eval_rate = args.evalrate
-
-    main(model_path,
-         traindata_path,
-         eval_rate)
+    main()
