@@ -27,7 +27,7 @@ from torchvision import datasets, transforms
 # our custom modules
 from customTransforms import *
 from ImageHandling import ImageBrowser
-from Extractor import H5Dataset, target_idx, better_random_split
+from Extractor import H5Dataset, target_idx, better_random_split, optimized_split
 from CustomLoss import WeightedMSELoss
 
 import sys
@@ -35,7 +35,7 @@ import sys
 import warnings
 torch.manual_seed(1)
 
-
+import cProfile, pstats, io
 
 
 # define the cuda device
@@ -216,12 +216,14 @@ class Net(nn.Module):
 def evaluate(model,
              eval_loader,
              loss_function,
-             weights):
+             weights,
+             verbose=True):
     with torch.no_grad():
         loss = 0
         for eval_idx, (data, target) in enumerate(eval_loader):
             print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
-                  end="", flush=True)
+                  end="",
+                  flush=True)
             data, target = data.to(device), target.to(device)
             output = model(data,
                            target[:,target_idx['speed']],
@@ -261,7 +263,8 @@ def main():
                                     SaltNPepper(0.1),
                                     GaussianNoise(0, 0.1),
                                     RegionDropout((10, 10),10)],
-                                   normalize = True)
+                                   normalize = True,
+                                   std=1)
     un_composed = transforms.Compose([JustNormalize(std=1)])
 
     train_set = H5Dataset(root_dir = traindata_path,
@@ -292,15 +295,15 @@ def main():
     start_time = time.time()
 
 
-    BATCH_SIZE = 128
+    BATCH_SIZE = 100
     # show loss each after m batches
     BATCH_LOSS_RATE = 100
     # evaluate each after n batches
 
     for epoch in range(1, num_train_epochs + 1):
-        train_split, eval_split = better_random_split(train_set,
-                                                      eval_set,
-                                                      0.8)
+        train_split, eval_split = optimized_split(train_set,
+                                                  eval_set,
+                                                  0.8)
         train_loader = torch.utils.data.DataLoader(train_split,
                                                    batch_size=BATCH_SIZE, # TODO: Decide on batchsize
                                                    shuffle=False,
@@ -357,7 +360,8 @@ def main():
                                         eval_loader,
                                         loss_function,
                                         weights)
-                    print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time, avg_loss))
+                    print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time,
+                                                                                 avg_loss))
                     print("---------------------------------------------------------------")
                     csv_path_eval_loss = model_path.replace('.pt', '_evalloss.csv')
                     if avg_loss is not None:
@@ -367,6 +371,7 @@ def main():
                                                 sep="\t",
                                                 header=False,
                                                 index=False)
+
         except KeyboardInterrupt:
             print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
             save_model(model, model_path,

@@ -137,6 +137,7 @@ class H5Dataset(Dataset):
             self.file_idx = file_idx
 
         # for magic idx numbers inspect class description
+        # foo = self.current_file.__getitem__(('rgb', 'targets'))
         data = self.current_file['rgb'][idx]
         targets = self.current_file['targets'][idx]
 
@@ -157,15 +158,51 @@ def better_random_split(dataset_enhanced,
 
     Arguments:
         dataset_enhanced: The dataset with transforms
-        dataset_clean: the dataset with only the necessary transforms
+        dataset_clean: the dataset with only the necessary transforms and in sequential order
         fraction: the amount of data to be split
     """
     assert fraction < 1, "Fraction should be < 1"
     assert len(dataset_enhanced) == len(dataset_clean)
 
-    indices = randperm(len(dataset_enhanced))
-    split_idx = int(fraction * len(dataset_enhanced))
-    return Subset(dataset_enhanced, indices[:split_idx]), Subset(dataset_clean, indices[split_idx:])
+    total_length = len(dataset_enhanced)
+    train_length = int(fraction * total_length)
+    eval_length = total_length - train_length
+
+    val_idx0 = np.random.randint(train_length)
+
+    train_idx_lst = np.append(np.arange(val_idx0),
+                              np.arange(val_idx0 + eval_length, total_length))
+    eval_idx_lst = np.arange(val_idx0, val_idx0 + eval_length)
+
+    np.random.shuffle(train_idx_lst)
+
+    return Subset(dataset_enhanced, train_idx_lst), Subset(dataset_clean, eval_idx_lst)
+
+
+def optimized_split(dataset_enhanced,
+                    dataset_clean,
+                    fraction,
+                    sets_per_file=200):
+    assert fraction < 1, "Fraction should be < 1"
+    assert len(dataset_enhanced) == len(dataset_clean)
+
+    total_length = len(dataset_enhanced)
+    amount_files = int(total_length / sets_per_file)
+
+    train_length = int(fraction * total_length)
+
+    indices = np.arange(total_length).reshape((amount_files,
+                                               sets_per_file))
+
+    # shuffle all the sets in the files
+    for idx in range(indices.shape[0]):
+        indices[idx] = np.random.permutation(indices[idx])
+
+    # shuffle all the files around and flatten the array
+    indices = np.random.permutation(indices).flatten()
+
+    return Subset(dataset_enhanced, indices[:train_length]), \
+        Subset(dataset_clean, indices[train_length:])
 
 
 """ Just show pretty, enhanced samples"""
