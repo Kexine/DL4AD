@@ -9,7 +9,6 @@ Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 #!/usr/bin/env python3
 from __future__ import print_function, division
 import h5py
-import cv2
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader

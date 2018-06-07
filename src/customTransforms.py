@@ -73,7 +73,9 @@ class SaltNPepper(object):
     integer: both salt and pepper equally added
     tuple: (salt, pepper)-amount
     """
-    def __init__(self, fraction, colored=False):
+    def __init__(self,
+                 fraction = None,
+                 colored=False):
         if isinstance(fraction, tuple):
             self.amount_salt = fraction[0]
             self.amount_pepper = fraction[1]

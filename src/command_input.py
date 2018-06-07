@@ -8,7 +8,6 @@ Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 
 from __future__ import print_function, division
 import h5py
-import cv2
 import numpy as np
 import pandas as pd
 import os, os.path
@@ -292,11 +291,13 @@ def main(model_path,
         train_loader = torch.utils.data.DataLoader(train_split,
                                                    batch_size=BATCH_SIZE, # TODO: Decide on batchsize
                                                    shuffle=False,
-                                                   pin_memory=False)
+                                                   pin_memory=False,
+                                                   num_workers=8)
 
         eval_loader = torch.utils.data.DataLoader(eval_split,
                                                   batch_size=BATCH_SIZE,
-                                                  shuffle=False)
+                                                  shuffle=False,
+                                                  num_workers=8)
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
         print("Batch Size: {}\t| Eval Rate: {}".format(BATCH_SIZE, eval_rate))
