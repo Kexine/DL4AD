@@ -274,7 +274,6 @@ def main():
     eval_rate = args.evalrate
     eval_fraction = args.valfraction
     batch_size = args.batchsize
->>>>>>> Stashed changes
 
     composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
                                     GaussianBlur(1.5),
