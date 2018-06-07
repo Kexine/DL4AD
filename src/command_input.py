@@ -31,6 +31,7 @@ from Extractor import H5Dataset, target_idx, better_random_split, optimized_spli
 from CustomLoss import WeightedMSELoss
 
 import sys
+import time
 
 import warnings
 torch.manual_seed(1)
@@ -238,25 +239,9 @@ def evaluate(model,
     return avg_loss
 
 
-def main():
-    import argparse
-    import time
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model",
-                        help="A (existing?) model file to store to",
-                        default='../model/command_input.pt')
-    parser.add_argument("-t", "--train",
-                        help="Directory of the train data",
-                        default='../data/AgentHuman/SeqTrain')
-    parser.add_argument("-e", "--evalrate",
-                        help="Evaluate every [N] training batches",
-                        default=200,
-                        type=int)
-    args = parser.parse_args()
-
-    model_path = args.model
-    traindata_path = args.train
-    eval_rate = args.evalrate
+def main(model_path,
+         traindata_path,
+         eval_rate=200):
 
     composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
                                     GaussianBlur(1.5),
@@ -383,4 +368,25 @@ def main():
 
 
 if  __name__=="__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model",
+                        help="A (existing?) model file to store to",
+                        default='../model/command_input.pt')
+    parser.add_argument("-t", "--train",
+                        help="Directory of the train data",
+                        default='../data/AgentHuman/SeqTrain')
+    parser.add_argument("-e", "--evalrate",
+                        help="Evaluate every [N] training batches",
+                        default=200,
+                        type=int)
+    args = parser.parse_args()
+
+    model_path = args.model
+    traindata_path = args.train
+    eval_rate = args.evalrate
+
+    main(model_path,
+         traindata_path,
+         eval_rate)

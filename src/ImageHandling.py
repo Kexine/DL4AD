@@ -11,20 +11,25 @@ target_idx = {'steer': 0,
               'speed': 10,
               'command': 24}
 
+def _get_current_width():
+    return (plt.gcf().get_size_inches()*plt.gcf().dpi)[0]
+
 class ImageBrowser:
 
     """ Get the datasets and at which index to start."""
-    def __init__(self, dataset1, dataset2, idx = None):
+    def __init__(self,
+                 datasets,
+                 idx = None):
 
-        assert len(dataset1) == len(dataset2), \
+        for i in range(len(datasets) - 1):
+            assert len(datasets[i]) == len(datasets[i+1]), \
 "Datasets must have same length for the ImageBrowser!"
 
         # create a random index, if none given
         if idx is None:
-            idx = random.randrange(0, len(dataset1))
+            idx = random.randrange(0, len(datasets[0]))
 
-        self.dataset1 = dataset1
-        self.dataset2 = dataset2
+        self.datasets = datasets
 
         self.__update_index(idx)
 
@@ -41,10 +46,10 @@ class ImageBrowser:
     def __update_index(self, idx):
         # truncate at beginning and end of the dataset
         idx = max(idx, 0)
-        idx = min(idx, len(self.dataset1))
+        idx = min(idx, len(self.datasets[0]))
 
         self.idx = idx
-        self.current_target = self.dataset1[self.idx][1]
+        self.current_target = self.datasets[0][self.idx][1]
 
     def cmd2verbose(self):
         cmd = int(self.current_target[target_idx['command']])
@@ -59,7 +64,8 @@ class ImageBrowser:
         if speed>self.SPEED_LIMIT_VISUAL:
             dx = np.cos(rad - np.pi/2) * speed
             dy = np.sin(rad - np.pi/2) * speed
-            return plt.arrow(300,88,dx,dy, width = 1, color='g')
+            return plt.arrow(get_current_width(),
+                             88,dx,dy, width = 1, color='g')
         else:
             dx = np.cos(rad - np.pi/2) * self.SPEED_LIMIT_VISUAL
             dy = np.sin(rad - np.pi/2) * self.SPEED_LIMIT_VISUAL
@@ -76,6 +82,7 @@ class ImageBrowser:
         self.draw_angle()
         return ax.add_artist(circ)
 
+
     # create title for diagram with meta information
     def make_title(self):
         file_idx = int(self.idx/200)
@@ -91,6 +98,7 @@ class ImageBrowser:
         plt.title("File: {}| Image {}\n Steering Angle: {:.4f}| Speed: {:.2f}\n Command {}"\
                   .format(filename, image_idx, st_angle,speed, verbose_cmd))
 
+
     def draw_arrow(self):
         verbose_cmd = self.cmd2verbose()
         if verbose_cmd=="Straight":
@@ -103,6 +111,7 @@ class ImageBrowser:
             # follow lane gets no special symbol since we conside this to be
             # the default state of command
             return #plt.arrow(300,44,0,-10, width = 1, color='r')
+
 
     def process_key(self, event):
         if event.key == 'left' or event.key == 'down':
@@ -124,16 +133,11 @@ class ImageBrowser:
 
         plt.draw()
 
+
     def create_sidebyside(self):
-        img1 = self.dataset1[self.idx][0]
-        img2 = self.dataset2[self.idx][0]
-        result = torch.cat((img1, img2),
-                         dim = 2).numpy() # .transpose((1,2,0))
+        images = [data[self.idx][0] for data in self.datasets]
 
-        result = torch.cat((img1, img2),
-                         dim = 2).numpy().transpose((1,2,0))
-
-        return torch.cat((img1, img2),
+        return torch.cat(images,
                          dim = 2).numpy().transpose((1,2,0))
 
     def show(self):

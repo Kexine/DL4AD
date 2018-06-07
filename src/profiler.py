@@ -37,7 +37,9 @@ try:
         for i in range(len(train_set)):
             foo = train_set[i]
     elif profiling == "command_input":
-        command_input.main()
+        command_input.main('../model/foobar.pt',
+                           '/media/flosmanm/f895102d-a47a-4682-a893-0f78677ae5a5/shared/AgentHuman/SeqTrain',
+                           200)
 except KeyboardInterrupt:
     pass
 
