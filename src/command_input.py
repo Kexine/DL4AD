@@ -61,12 +61,12 @@ def load_model(model, model_path):
         print("No model found, starting training with new model!")
 
 
-def save_model(model, model_path, train_loss = None):
+def save_model(model, model_path, epoch, train_loss = None):
     torch.save(model.state_dict(), model_path)
     # also store a csv file with the train loss
     if train_loss is not None:
         csv_path = model_path.replace("pt", "csv")
-        df = pd.DataFrame([train_loss])
+        df = pd.DataFrame({'col1':[int(epoch)], 'col2':[train_loss]})
         with open(csv_path, 'a') as f:
             df.to_csv(f,
                       sep="\t",
@@ -238,9 +238,36 @@ def evaluate(model,
     return avg_loss
 
 
-def main(model_path,
-         traindata_path,
-         eval_rate=200):
+def main():
+    import argparse
+    import time
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model",
+                        help="A (existing?) model file to store to",
+                        default='../model/command_input.pt')
+    parser.add_argument("-t", "--train",
+                        help="Directory of the train data",
+                        default='../data/AgentHuman/SeqTrain')
+    parser.add_argument("-e", "--evalrate",
+                        help="Evaluate every [N] training batches",
+                        default=200,
+                        type=int)
+    parser.add_argument("-v", "--valfraction",
+                        help="Fraction of training/validation part of data set",
+                        default=0.9,
+                        type=float)
+    parser.add_argument("-b", "--batchsize",
+                        help="Size of batches",
+                        default=200,
+                        type=int)
+
+    args = parser.parse_args()
+
+    model_path = args.model
+    traindata_path = args.train
+    eval_rate = args.evalrate
+    eval_fraction = args.valfraction
+    batch_size = args.batchsize
 
     composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
                                     GaussianBlur(1.5),
@@ -279,29 +306,28 @@ def main(model_path,
     start_time = time.time()
 
 
-    BATCH_SIZE = 100
     # show loss each after m batches
-    BATCH_LOSS_RATE = 100
-    # evaluate each after n batches
+    BATCH_LOSS_RATE = 1
 
     for epoch in range(1, num_train_epochs + 1):
         train_split, eval_split = optimized_split(train_set,
                                                   eval_set,
-                                                  0.8)
+                                                  eval_fraction)
         train_loader = torch.utils.data.DataLoader(train_split,
-                                                   batch_size=BATCH_SIZE, # TODO: Decide on batchsize
+                                                   batch_size=batch_size, # TODO: Decide on batchsize
                                                    shuffle=False,
                                                    pin_memory=False,
                                                    num_workers=8)
 
         eval_loader = torch.utils.data.DataLoader(eval_split,
-                                                  batch_size=BATCH_SIZE,
+                                                  batch_size=batch_size,
                                                   shuffle=False,
                                                   num_workers=8)
+
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
-        print("Batch Size: {}\t| Eval Rate: {}".format(BATCH_SIZE, eval_rate))
-        print("Splitted Training Set:")
+        print("Batch Size: {}\t| Eval Rate: {}".format(batch_size, eval_rate))
+        print("Splitted Training Set into {} Training and {} Validation:".format(eval_fraction,round(1-eval_fraction,2)))
         print("{} Training Samples\t| {} Evaluation Samples".format(len(train_split), len(eval_split)))
         print("{} Training Batches\t| {} Evaluation Batches".format(len(train_loader), len(eval_loader)))
         print("---------------------------------------------------------------")
@@ -335,7 +361,7 @@ def main(model_path,
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-                    save_model(model, model_path,
+                    save_model(model, model_path, epoch,
                                train_loss = loss.item())
 
                 # ---------- Validation after n batches
@@ -351,7 +377,8 @@ def main(model_path,
                     print("---------------------------------------------------------------")
                     csv_path_eval_loss = model_path.replace('.pt', '_evalloss.csv')
                     if avg_loss is not None:
-                        df_eval_loss = pd.DataFrame([avg_loss])
+                        df_eval_loss = pd.DataFrame({'col1':[int(epoch)], 'col2':[avg_loss]})
+
                         with open(csv_path_eval_loss, 'a') as f:
                             df_eval_loss.to_csv(f,
                                                 sep="\t",
@@ -360,34 +387,13 @@ def main(model_path,
 
         except KeyboardInterrupt:
             print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
-            save_model(model, model_path,
+            save_model(model, model_path, epoch,
                        train_loss = loss.item())
             return
 
-        save_model(model, model_path,
+        save_model(model, model_path, epoch,
                    train_loss = loss.item())
 
 
 if  __name__=="__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model",
-                        help="A (existing?) model file to store to",
-                        default='../model/command_input.pt')
-    parser.add_argument("-t", "--train",
-                        help="Directory of the train data",
-                        default='../data/AgentHuman/SeqTrain')
-    parser.add_argument("-e", "--evalrate",
-                        help="Evaluate every [N] training batches",
-                        default=200,
-                        type=int)
-    args = parser.parse_args()
-
-    model_path = args.model
-    traindata_path = args.train
-    eval_rate = args.evalrate
-
-    main(model_path,
-         traindata_path,
-         eval_rate)
+    main()
