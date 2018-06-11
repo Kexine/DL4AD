@@ -5,6 +5,7 @@
 \usepackage[utf8x]{inputenc}
 % \usepackage[T1]{fontenc}
 \usepackage{float}
+\usepackage{url}
 
 \usepackage{helvet}
 \renewcommand{\familydefault}{\sfdefault}
@@ -22,8 +23,8 @@
 \usepackage{listings}
 \lstset{basicstyle=\ttfamily,
   showstringspaces=false,
-  commentstyle=\color{red},
-  keywordstyle=\color{blue}
+  commentstyle=\color{blue},
+  keywordstyle=\color{black}
 }
 
 
@@ -50,11 +51,10 @@ paper by Codevilla et al. \cite{imitation}. This included:
 
 During the assignment we encountered several which delayed our development progress. Due to these problems we where not able to achieve the goals above. Below we will state a short list with the most problematic issues, attends to solve them and whether this worked or not. After that, a short list of results we can provide within this report will follow.
 
-	\paragraph{Corrupted files}: While reading in the dataset, we encountered OSErrors. This was due to the corruption of one (and sometimes more than one) file. This file was basically empty and we had to write a "CheckCorruption" like routine to scan the dataset beforehand in order to avoid further crashes. Our routine works and removes corrupted files from the training set.
-	\paragraph{Disk Space}: Disk space was not sufficient to unpack the whole dataset and as consequence we where force to fetch the dataset from the university network which is slower than using the internal SSD (where access was restricted)
-	\paragraph{Runtime}: Training and Validation are quite time consuming, around 10h to 15h are normal for 5 epochs of training. We tried to speed it up by increasing the number of workers in the pytorch loader and accessing the validation sets in a more sequential way. This reduced the time consumption significantly.
-	\clearpage
-	\paragraph{Nightly Reboots}: We wanted to train during the night, but due to the nightly reboots, the training was interrupted. We could do nothing regarding this problem. The only thing we could do was to save the model on a periodic basis and continue after the reboot with a new training run, but the old model.
+	\paragraph{Corrupted files} While reading in the dataset, we encountered OSErrors. This was due to the corruption of one (and sometimes more than one) file. This file was basically empty and we had to write a "CheckCorruption" like routine to scan the dataset beforehand in order to avoid further crashes. Our routine works and removes corrupted files from the training set.
+	\paragraph{Disk Space} Disk space was not sufficient to unpack the whole dataset and as consequence we where force to fetch the dataset from the university network which is slower than using the internal SSD (where access was restricted)
+	\paragraph{Runtime} Training and Validation are quite time consuming, around 10h to 15h are normal for 5 epochs of training. We tried to speed it up by increasing the number of workers in the pytorch loader and accessing the validation sets in a more sequential way. This reduced the time consumption significantly.
+	\paragraph{Nightly Reboots} We wanted to train during the night, but due to the nightly reboots, the training was interrupted. We could do nothing regarding this problem. The only thing we could do was to save the model on a periodic basis and continue after the reboot with a new training run, but the old model.
 	
 \begin{lstlisting}[language=bash, caption={Nigthly Reboot Interruption}]
 
@@ -77,7 +77,7 @@ Connection to login.informatik.uni-freiburg.de closed.
 
 \end{lstlisting}
 
-\paragraph{Retain Graph Error}: This error occurred two times in total. Both in the way like listed below. After the first time, we did as suggested by the program and set the \textbf{retain\_graph} attribute to true. But it did not help and the error did pop up again. This happened only on one of our private homestations, so we were basically forced to work on the pool computers.
+\paragraph{Retain Graph Error} This error occurred two times in total. Both in the way like listed below. After the first time, we did as suggested by the program and set the \textbf{retain\_graph} attribute to true. But it did not help and the error did pop up again. This happened only on one of our private homestations, so we were basically forced to work on the pool computers.
 
 \begin{lstlisting}[language=bash, caption={Nigthly Reboot Interruption}]
 
@@ -104,10 +104,7 @@ Specify retain_graph=True when calling backward the first time.
 
 \end{lstlisting}
 
-\paragraph{Deus Ex Machina}: Somebody turns of a pool machine where we are training on.
-
-\section{Architecture}
-\subsection{Networks}
+\paragraph{Deus Ex Machina} Somebody turns of a pool machine where we are training on.
 
 \section{Results}
 We managed to let the network "Command Input" run a training with augmented images and non-augmented images.
@@ -116,14 +113,36 @@ Settings were the same for both runs:
 \begin{itemize}
 	\item Batch size: 100
 	\item 80\% training, 20\% validation split
-	\item Learning Rate $0.0002$
+	\item Learning Rate 0.0002
 	\item Evaluation after every 500 batches
-\end{itemize}
+  \end{itemize}
 
-\clearpage
+\paragraph{Missing information from the paper} The paper doesn't state several
+important hyperparameters like the weights in equation (6) (page 4), or the
+magnitudes of the random parameters in the data augmentation. A git issue has
+been filed for the weight parameter, but the information given was inconcludive.
+(\url{https://github.com/carla-simulator/imitation-learning/issues/19})
 
-\subsection{Command Input: Augmented}
-%\begin{minipage}{0.45\textwidth}
+\subsection{Results for Command Input: Augmented}
+The loss plots are displayed in the figures \ref{fig:augmented_command_train_loss}
+and \ref{fig:augmented_command_eval_loss}. The training error is too noisy to
+read anything substantial from it and the validation loss doesn't show a clear
+trend except for right after the very first validation when the model was
+completely untrained.
+
+This may be an effect of the data augmentation hyperparameters not being tuned
+correctly, distorting the image too much and making the model underfit.
+The errors for the test set are listed in table \ref{tab:error_command_aug}.
+\begin{table}[H]
+  \centering
+  \caption{Error values for augmented command values}
+  \begin{tabular}{lcc}
+    &Mean squared error& Median squared error \\ \hline
+    Steer & 0.0357 & 0.0010 \\
+    Gas &0.0879&0.0098
+  \end{tabular}
+  \label{tab:error_command_aug}
+\end{table}
   \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth, height=8cm]{../pics/command_input_training_augmented.png}
@@ -140,13 +159,27 @@ Settings were the same for both runs:
     \label{fig:augmented_command_eval_loss}
   \end{figure}
 
-%\end{minipage}
 
+  \subsection{Command Input: Non-augmented}
+  The loss plots are displayed in the figure \ref{fig:non_augmented_train_loss}
+  and \ref{fig:non_augmented_val_loss}. While the training error is very noisy
+  still, the validation error shows a diminishing trend each epoch. This could
+  suggest that more training epochs are needed for proper predictions. Also, the
+  visible trend furtherly suggests that for the augmented training the
+  augmentation hyperparameters must be better tuned in order not to underfit the
+  model.
 
-
-\clearpage
-\subsection{Command Input: Non-augmented}
-
+  The errors for the test set are listed in table \ref{tab:error_command_non_aug}.
+\begin{table}[H]
+  \centering
+  \caption{Error values for non-augmented command values}
+  \begin{tabular}{lcc}
+    &Mean squared error& Median squared error \\ \hline
+    Steer & 0.0357 & 0.0017 \\
+    Gas &0.0865&0.0109
+  \end{tabular}
+  \label{tab:error_command_non_aug}
+\end{table}
 %\begin{minipage}{0.45\textwidth}
   \begin{figure}[H]
     \centering
@@ -164,7 +197,12 @@ Settings were the same for both runs:
     \label{fig:non_augmented_val_loss}
   \end{figure}
 
-%\end{minipage}
+  % \end{minipage}
+
+  \subsection{Branched}
+
+The branched could not be analyzed because several issues got in the way. This
+will be addressed for the next assignment.
 
 \begin{thebibliography}{9}
 \bibitem{imitation}
