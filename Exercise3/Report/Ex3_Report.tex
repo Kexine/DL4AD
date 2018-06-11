@@ -3,7 +3,8 @@
 %% Language and font encodings
 \usepackage[english]{babel}
 \usepackage[utf8x]{inputenc}
-%\usepackage[T1]{fontenc}
+% \usepackage[T1]{fontenc}
+\usepackage{float}
 
 \usepackage{helvet}
 \renewcommand{\familydefault}{\sfdefault}
@@ -119,16 +120,24 @@ Settings were the same for both runs:
 	\item Evaluation after every 500 batches
 \end{itemize}
 
-
-
 \subsection{Command Input: Augmented}
-
-
 \begin{minipage}{0.45\textwidth}
-\includegraphics[width=\textwidth]{../pics/command_input_training_augmented.png}
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../pics/command_input_training_augmented.png}
+    \caption{Train losses for augmented command input}
+    \label{fig:augmented_command_train_loss}
+  \end{figure}
 \end{minipage}
 \begin{minipage}{0.45\textwidth}
-\includegraphics[width=\textwidth]{../pics/command_input_validation_augmented.png}
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../pics/command_input_validation_augmented.png}
+    
+    \caption{Validation losses for augmented command input}
+    \label{fig:augmented_command_eval_loss}
+  \end{figure}
+
 \end{minipage}
 
 
@@ -137,15 +146,23 @@ Settings were the same for both runs:
 \subsection{Command Input: Non-augmented}
 
 \begin{minipage}{0.45\textwidth}
-\includegraphics[width=\textwidth]{../pics/command_input_nonaugmented_training.png}
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../pics/command_input_nonaugmented_training.png}
+    \caption{Train losses for not augmented command input}
+    \label{fig:non_augmented_train_loss}
+  \end{figure}
+
 \end{minipage}
 \begin{minipage}{0.45\textwidth}
-\includegraphics[width=\textwidth]{../pics/command_input_nonaugmented_validation.png}
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../pics/command_input_nonaugmented_validation.png}
+    \caption{Validation losses for not augmented command input}
+    \label{fig:non_augmented_val_loss}
+  \end{figure}
+
 \end{minipage}
-
-
-
-
 
 
 \end{document}
