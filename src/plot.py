@@ -56,16 +56,16 @@ def main():
     plt.xlabel('Index')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig('training.png')
+    # plt.savefig('training.png')
 
     plt.figure()
     plt.plot(data['eval_data'], label='validation', c='r')
     plt.xlabel('Index')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig('validation.png')
+    # plt.savefig('validation.png')
 
-    # plt.show()
+    plt.show()
 
 
 
