@@ -35,24 +35,25 @@
 
 \section{Introduction}
 \subsection{Goals}
-
+The main objective of this assignment was to reproduce the work done in the
+paper by Codevilla et al. \cite{imitation}. This included:
 \begin{itemize}
-	\item Implement and train the network \textit{command input} with augmented images
-	\item Implement and train the network \textit{branched} with augmented images
-	\item Implement and train \textit{branched} with non-augmented images
-	\item Optional: try recurrent approaches
-\end{itemize}
+\item Reconstructing the described networks in pytorch (``command input'' and ``branched'')
+\item Training the reconstructed networks on the original dataset from
+  \cite{imitation} with image augmentations implemented in a previous
+  assignment (with some ablation studies).
+\item Optional: Implement a recurrent architechture to model the temporal domain.
+\end{itemize} 
 
 \subsection{Issues}
 
 During the assignment we encountered several which delayed our development progress. Due to these problems we where not able to achieve the goals above. Below we will state a short list with the most problematic issues, attends to solve them and whether this worked or not. After that, a short list of results we can provide within this report will follow.
 
-\begin{itemize}
-	\item \textbf{Corrupted files}: While reading in the dataset, we encountered OSErrors. This was due to the corruption of one (and sometimes more than one) file. This file was basically empty and we had to write a "CheckCorruption" like routine to scan the dataset beforehand in order to avoid further crashes. Our routine works and removes corrupted files from the training set.
-	\item \textbf{Disk Space}: Disk space was not sufficient to unpack the whole dataset and as consequence we where force to fetch the dataset from the university network which is slower than using the internal SSD (where access was restricted)
-	\item \textbf{Runtime}: Training and Validation are quite time consuming, around 10h to 15h are normal for 5 epochs of training. We tried to speed it up by increasing the number of workers in the pytorch loader and accessing the validation sets in a more sequential way. This reduced the time consumption significantly.
+	\paragraph{Corrupted files}: While reading in the dataset, we encountered OSErrors. This was due to the corruption of one (and sometimes more than one) file. This file was basically empty and we had to write a "CheckCorruption" like routine to scan the dataset beforehand in order to avoid further crashes. Our routine works and removes corrupted files from the training set.
+	\paragraph{Disk Space}: Disk space was not sufficient to unpack the whole dataset and as consequence we where force to fetch the dataset from the university network which is slower than using the internal SSD (where access was restricted)
+	\paragraph{Runtime}: Training and Validation are quite time consuming, around 10h to 15h are normal for 5 epochs of training. We tried to speed it up by increasing the number of workers in the pytorch loader and accessing the validation sets in a more sequential way. This reduced the time consumption significantly.
 	\clearpage
-	\item \textbf{Nightly Reboots}: We wanted to train during the night, but due to the nightly reboots, the training was interrupted. We could do nothing regarding this problem. The only thing we could do was to save the model on a periodic basis and continue after the reboot with a new training run, but the old model.
+	\paragraph{Nightly Reboots}: We wanted to train during the night, but due to the nightly reboots, the training was interrupted. We could do nothing regarding this problem. The only thing we could do was to save the model on a periodic basis and continue after the reboot with a new training run, but the old model.
 	
 \begin{lstlisting}[language=bash, caption={Nigthly Reboot Interruption}]
 
@@ -75,7 +76,7 @@ Connection to login.informatik.uni-freiburg.de closed.
 
 \end{lstlisting}
 
-\item \textbf{Retain Graph Error}: This error occurred two times in total. Both in the way like listed below. After the first time, we did as suggested by the program and set the \textbf{retain\_graph} attribute to true. But it did not help and the error did pop up again. This happened only on one of our private homestations, so we were basically forced to work on the pool computers.
+\paragraph{Retain Graph Error}: This error occurred two times in total. Both in the way like listed below. After the first time, we did as suggested by the program and set the \textbf{retain\_graph} attribute to true. But it did not help and the error did pop up again. This happened only on one of our private homestations, so we were basically forced to work on the pool computers.
 
 \begin{lstlisting}[language=bash, caption={Nigthly Reboot Interruption}]
 
@@ -102,13 +103,10 @@ Specify retain_graph=True when calling backward the first time.
 
 \end{lstlisting}
 
-\item \textbf{Deus Ex Machina}: Somebody turns of a pool machine where we are training on.
+\paragraph{Deus Ex Machina}: Somebody turns of a pool machine where we are training on.
 
-
-
-\end{itemize}
-
-\clearpage
+\section{Architecture}
+\subsection{Networks}
 
 \section{Results}
 We managed to let the network "Command Input" run a training with augmented images and non-augmented images.
@@ -116,11 +114,9 @@ The training run with the augmented images is non-complete, since it was interru
 Settings were the same for both runs:
 \begin{itemize}
 	\item Batch size: 100
-	\item 80\% Trainingdata, 20\% Validation data
+	\item 80\% training, 20\% validation split
 	\item Learning Rate $0.0002$
 	\item Evaluation after every 500 batches
-	
-	
 \end{itemize}
 
 
