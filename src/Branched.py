@@ -226,14 +226,9 @@ def evaluate(model,
             for c in range(0,len(target[0].shape)):
                 output_target = target[:,[target_idx['steer'],
                                       target_idx['gas']]]
-                if target[c,target_idx['command']] == 2:
-                    output = output_branches[0]
-                if target[c,target_idx['command']] == 3:
-                    output = output_branches[1]
-                if target[c,target_idx['command']] == 4:
-                    output = output_branches[2]
-                if target[c,target_idx['command']] == 5:
-                    output = output_branches[3]
+                current_branch = target[c,target_idx['command']]
+                output = output_branches[current_branch]
+
                 loss += loss_function(output.double(),
                                      output_target.double(),
                                      weights.double()).item()
@@ -243,6 +238,7 @@ def evaluate(model,
 
 
 def main():
+    # --------------- Parse arguments ---------------
     import argparse
     import time
     parser = argparse.ArgumentParser()
@@ -273,6 +269,7 @@ def main():
     eval_fraction = args.valfraction
     batch_size = args.batchsize
 
+    # --------------- Prepare Datasets ---------------
     composed = transforms.Compose([transforms.ToTensor(),
                                    transforms.Normalize((0.1307,), (0.3081,)),
                                    ContrastNBrightness(1.5,0.5),
@@ -291,6 +288,7 @@ def main():
                          transform=un_composed)
 
 
+    # --------------- Init training ---------------
     model = Net().to(device)
     load_model(model, model_path)
     optimizer = optim.Adam(model.parameters(), lr=0.0002)
@@ -305,6 +303,7 @@ def main():
     num_train_epochs = 5
     start_time = time.time()
 
+    # --------------- Train ---------------
     for epoch in range(1, num_train_epochs + 1):
         train_loss = []  # empty list to store the train losses
         train_split, eval_split = optimized_split(train_set,
@@ -338,20 +337,17 @@ def main():
                 optimizer.zero_grad()
                 # Forward pass of the neural net
                 output_branches = model(data,
-                               target[:,target_idx['speed']])
+                                        target[:,target_idx['speed']])
 
                 # Calculation of the loss function
                 for c in range(0,len(target[0].shape)):
                     output_target = target[:,[target_idx['steer'],
                                           target_idx['gas']]]
-                    if target[c,target_idx['command']] == 2:
-                        output = output_branches[0]
-                    if target[c,target_idx['command']] == 3:
-                        output = output_branches[1]
-                    if target[c,target_idx['command']] == 4:
-                        output = output_branches[2]
-                    if target[c,target_idx['command']] == 5:
-                        output = output_branches[3]
+
+                    # for command = 2 => output = branches[0] ...
+                    current_branch = target[c, target_idx['command']] - 2
+                    output = output_branches[current_branch]
+
                     loss = loss_function(output.double(),
                                          output_target.double(),
                                          weights.double())
@@ -359,34 +355,35 @@ def main():
                     loss.backward()
                     # Adjusting the parameters according to the loss function
                     optimizer.step()
-                    if batch_idx % BATCH_LOSS_RATE  == 0 and batch_idx != 0:
-                        print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                            time.time() - start_time,
-                            epoch, batch_idx * len(data), len(train_loader.dataset),
-                            100. * batch_idx / len(train_loader), loss.item()))
-                        save_model(model, model_path, epoch,
-                                   train_loss = loss.item())
 
-                    # ---------- Validation after n batches
-                    if batch_idx % eval_rate == 0 and batch_idx != 0:
-                        print("---------------------------------------------------------------")
-                        model.eval()
-                        avg_loss = evaluate(model,
-                                            eval_loader,
-                                            loss_function,
-                                            weights)
-                        print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time,
-                                                                                     avg_loss))
-                        print("---------------------------------------------------------------")
-                        csv_path_eval_loss = model_path.replace('.pt', '_evalloss.csv')
-                        if avg_loss is not None:
-                            df_eval_loss = pd.DataFrame({'col1':[int(epoch)], 'col2':[avg_loss]})
+                if batch_idx % BATCH_LOSS_RATE  == 0 and batch_idx != 0:
+                    print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        time.time() - start_time,
+                        epoch, batch_idx * len(data), len(train_loader.dataset),
+                        100. * batch_idx / len(train_loader), loss.item()))
+                    save_model(model, model_path, epoch,
+                               train_loss = loss.item())
 
-                            with open(csv_path_eval_loss, 'a') as f:
-                                df_eval_loss.to_csv(f,
-                                                    sep="\t",
-                                                    header=False,
-                                                    index=False)
+                # ---------- Validation after n batches
+                if batch_idx % eval_rate == 0 and batch_idx != 0:
+                    print("---------------------------------------------------------------")
+                    model.eval()
+                    avg_loss = evaluate(model,
+                                        eval_loader,
+                                        loss_function,
+                                        weights)
+                    print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time,
+                                                                                 avg_loss))
+                    print("---------------------------------------------------------------")
+                    csv_path_eval_loss = model_path.replace('.pt', '_evalloss.csv')
+                    if avg_loss is not None:
+                        df_eval_loss = pd.DataFrame({'col1':[int(epoch)], 'col2':[avg_loss]})
+
+                        with open(csv_path_eval_loss, 'a') as f:
+                            df_eval_loss.to_csv(f,
+                                                sep="\t",
+                                                header=False,
+                                                index=False)
 
         except KeyboardInterrupt:
             print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
