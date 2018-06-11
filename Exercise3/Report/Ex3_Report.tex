@@ -104,7 +104,14 @@ Specify retain_graph=True when calling backward the first time.
 
 \end{lstlisting}
 
-\paragraph{Deus Ex Machina} Somebody turns of a pool machine where we are training on.
+\paragraph{Deus Ex Machina} Somebody turns of a pool machine where we are
+training on.
+
+\paragraph{Missing information from the paper} The paper doesn't state several
+important hyperparameters like the weights in equation (6) (page 4), or the
+magnitudes of the random parameters in the data augmentation. A git issue has
+been filed for the weight parameter, but the information given was inconcludive.
+(\url{https://github.com/carla-simulator/imitation-learning/issues/19})
 
 \section{Results}
 We managed to let the network "Command Input" run a training with augmented images and non-augmented images.
@@ -116,12 +123,6 @@ Settings were the same for both runs:
 	\item Learning Rate 0.0002
 	\item Evaluation after every 500 batches
   \end{itemize}
-
-\paragraph{Missing information from the paper} The paper doesn't state several
-important hyperparameters like the weights in equation (6) (page 4), or the
-magnitudes of the random parameters in the data augmentation. A git issue has
-been filed for the weight parameter, but the information given was inconcludive.
-(\url{https://github.com/carla-simulator/imitation-learning/issues/19})
 
 \subsection{Results for Command Input: Augmented}
 The loss plots are displayed in the figures \ref{fig:augmented_command_train_loss}
