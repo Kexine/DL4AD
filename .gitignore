@@ -1,3 +1,9 @@
 data/
 src/__pycache__/
 model/
+*.pdf
+*.log
+*.aux
+*.out
+*.synctex.gz
+*/Report/auto
