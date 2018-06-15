@@ -338,6 +338,7 @@ def main():
         try:
             if progressbar is not None:
                 bar = progressbar.ProgressBar(max_value = len(train_loader))
+                bar.dynamic_messages['Loss'] = float('inf')
             for batch_idx, (data, target) in enumerate(train_loader):
                 # Move the input and target data on the GPU
                 data = data.to(device)
@@ -366,7 +367,7 @@ def main():
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
                     if progressbar is not None:
-                        bar.update(batch_idx)
+                        bar.update(batch_idx, 'Loss', loss.item())
 
                     save_model(model, model_path, epoch,
                                train_loss = loss.item())
