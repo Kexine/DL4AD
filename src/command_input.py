@@ -37,6 +37,11 @@ torch.manual_seed(1)
 
 import cProfile, pstats, io
 
+try:
+    import progressbar
+except ModuleNotFoundError:
+    progressbar = None
+
 
 # define the cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -309,21 +314,18 @@ def main():
     # show loss each after m batches
     BATCH_LOSS_RATE = 1
 
+    train_loader = torch.utils.data.DataLoader(train_set,
+                                               batch_size=batch_size, # TODO: Decide on batchsize
+                                               shuffle=True,
+                                               pin_memory=False,
+                                               num_workers=8)
+
+    eval_loader = torch.utils.data.DataLoader(eval_set,
+                                              batch_size=batch_size,
+                                              shuffle=False,
+                                              num_workers=8)
+
     for epoch in range(1, num_train_epochs + 1):
-        train_split, eval_split = optimized_split(train_set,
-                                                  eval_set,
-                                                  eval_fraction)
-        train_loader = torch.utils.data.DataLoader(train_split,
-                                                   batch_size=batch_size, # TODO: Decide on batchsize
-                                                   shuffle=False,
-                                                   pin_memory=False,
-                                                   num_workers=8)
-
-        eval_loader = torch.utils.data.DataLoader(eval_split,
-                                                  batch_size=batch_size,
-                                                  shuffle=False,
-                                                  num_workers=8)
-
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
         print("Batch Size: {}\t| Eval Rate: {}".format(batch_size, eval_rate))
@@ -334,6 +336,8 @@ def main():
         model.train()
 
         try:
+            if progressbar is not None:
+                bar = progressbar.ProgressBar(max_value = len(train_loader))
             for batch_idx, (data, target) in enumerate(train_loader):
                 # Move the input and target data on the GPU
                 data = data.to(device)
@@ -361,6 +365,9 @@ def main():
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
+                    if progressbar is not None:
+                        bar.update(batch_idx)
+
                     save_model(model, model_path, epoch,
                                train_loss = loss.item())
 
