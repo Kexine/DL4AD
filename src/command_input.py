@@ -37,6 +37,11 @@ torch.manual_seed(1)
 
 import cProfile, pstats, io
 
+try:
+    import progressbar
+except ModuleNotFoundError:
+    progressbar = None
+
 
 # define the cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -335,13 +340,23 @@ def main():
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
         print("Batch Size: {}\t| Eval Rate: {}".format(batch_size, eval_rate))
-        # print("Splitted Training Set into {} Training and {} Validation:".format(eval_fraction,round(1-eval_fraction,2)))
         print("{} Training Samples\t| {} Evaluation Samples".format(len(train_set), len(eval_set)))
         print("{} Training Batches\t| {} Evaluation Batches".format(len(train_loader), len(eval_loader)))
         print("---------------------------------------------------------------")
         model.train()
 
         try:
+            if progressbar is not None:
+                widgets = [progressbar.widgets.DynamicMessage('loss'), ' ',
+                           progressbar.widgets.Percentage(),
+                           ' of ', progressbar.widgets.DataSize('max_value'),
+                           ' ', progressbar.widgets.Bar(),
+                           ' ', progressbar.widgets.Timer(),
+                           ' ', progressbar.widgets.AdaptiveETA(),
+                           ' ']
+                bar = progressbar.ProgressBar(max_value = len(train_loader),
+                                              widgets = widgets)
+                bar.dynamic_messages['Loss'] = float('inf')
             for batch_idx, (data, target) in enumerate(train_loader):
                 # Move the input and target data on the GPU
                 data = data.to(device)
@@ -365,10 +380,14 @@ def main():
                 # Adjusting the parameters according to the loss function
                 optimizer.step()
                 if batch_idx % BATCH_LOSS_RATE  == 0 and batch_idx != 0:
-                    print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    if progressbar is not None:
+                        bar.update(batch_idx, loss=loss.item())
+                    else:
+                        print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
+
                     save_model(model, model_path, epoch,
                                train_loss = loss.item())
 
