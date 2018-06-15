@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import os, os.path
 import random
 import matplotlib.pyplot as plt
+import collections
 
 from customTransforms import *
 
@@ -75,7 +76,7 @@ target_idx = {'steer': 0,  # float
 ### CONSTANTS ###
 
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
-
+MAX_QUEUE_LENGTH = 400
 
 class H5Dataset(Dataset):
     '''
@@ -93,10 +94,12 @@ class H5Dataset(Dataset):
         self.file_names = sorted(os.listdir(self.root_dir))
         self.file_names = self._check_corruption(self.file_names)
 
-        # print(self.file_names)
-        # print(len(self.file_names))
-        self.file_idx = 0
-        self.current_file = None
+        # List with all the filehandles
+        self.file_handle_dict = {}
+
+        # Queue storing the order of the filehandles in RAM
+        self.file_idx_queue = collections.deque()
+
 
     def _check_corruption(self,file_names):
         crpt_idx = []
@@ -130,15 +133,19 @@ class H5Dataset(Dataset):
         file_idx = int(idx / IMAGES_PER_FILE)
         idx = idx % IMAGES_PER_FILE
 
-        if (file_idx != self.file_idx
-            or self.current_file is None):
-            self.current_file = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
-            self.file_idx = file_idx
+        if self.file_handle_dict.get(file_idx) is None:
+            if len(self.file_idx_queue) >= MAX_QUEUE_LENGTH:
+                popped_idx = self.file_idx_queue.pop()
+                self.file_handle_dict[popped_idx].close()
+                del self.file_handle_dict[popped_idx]
 
-        # for magic idx numbers inspect class description
-        # foo = self.current_file.__getitem__(('rgb', 'targets'))
-        data = self.current_file['rgb'][idx]
-        targets = self.current_file['targets'][idx]
+            self.file_idx_queue.append(file_idx)
+            self.file_handle_dict[file_idx] = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
+
+        current_file = self.file_handle_dict[file_idx]
+
+        data = current_file['rgb'][idx]
+        targets = current_file['targets'][idx]
 
         if self.transform:
             sample = (self.transform(data),
