@@ -8,7 +8,7 @@ from torchvision import datasets, transforms
 import numpy as np
 import pandas as pd
 
-import command_input
+import command_input, Branched
 
 try:
     import progressbar
@@ -23,7 +23,8 @@ class Agent(object):
         if agent_type == "command_input":
             self.model = command_input.Net()  # .to(device)
         else:
-            raise NotImplementedError()
+            if agent_type == "branched":
+                self.model = Branched.Net()
 
         self.model.load_state_dict(torch.load(model_path))
 
@@ -33,23 +34,39 @@ class Agent(object):
         with torch.no_grad():
             return self.model(img, speed, command)
 
+    def get_control_branched(self, img, speed, command):
+        with torch.no_grad():
+            # print("high level command: {}".format(int(command.numpy()[0]-2)))
+            # print("all branches with targets: {}".format(self.model(img, speed)))
+            # print("forward pass: {}".format(self.model(img, speed)[int(command.numpy()[0])]))
+
+
+
+            return self.model(img, speed)[int(command.numpy()[0]-2)]
+
+
+
 
 if __name__=="__main__":
     # ---------- Argument parsing
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("type",
-                        help="command|branched",
-                        default="command")
+    # parser.add_argument("type",
+    #                     help="command|branched",
+    #                     default="command")
+    parser.add_argument("-t", "--type",
+                        help="Type of the Network: command_input or branched",
+                        default="command_input")
     parser.add_argument("-m","--model",
                         help="The file from the trained model")
-    parser.add_argument("-c", "--csv",
-                        help="A CSV file with the target and prediction values")
+    # parser.add_argument("-c", "--csv",
+    #                     help="A CSV file with the target and prediction values")
     parser.add_argument("-d", "--dataset",
                         help="Directory of the test data",
                         default='../data/AgentHuman/SeqVal')
     args = parser.parse_args()
 
+    net_type = args.type
     dataset_path = args.dataset
     model_path = args.model
 
@@ -60,11 +77,10 @@ if __name__=="__main__":
                          transform= transforms.ToTensor())
 
     print("Loading model...")
-    agent = Agent(model_path, 'command_input')
+    agent = Agent(model_path, net_type)
 
     # arrays for storing predictions and ground truth
     length = len(test_set)
-
     pred = np.empty((length, 2))
     truth = np.empty((length, 2))
 
@@ -78,7 +94,12 @@ if __name__=="__main__":
         speed = target[:,target_idx['speed']]
         command = target[:,target_idx['command']]
 
-        pred[idx,:] = agent.get_control(data, speed, command).numpy()
+        if net_type == 'command_input':
+            pred[idx,:] = agent.get_control(data, speed, command).numpy()
+            print(pred[idx,:])
+        if net_type == 'branched':
+            pred[idx,:] = agent.get_control_branched(data, speed, command).numpy()
+
         truth[idx,0] = target[:,target_idx['steer']].numpy()
         truth[idx,1] = target[:,target_idx['gas']].numpy()
 
@@ -106,7 +127,7 @@ if __name__=="__main__":
                        'abs_error_gas': error[:,1],
                        'rel_error_steer': error[:,0]/truth[:,0],
                        'rel_error_gas': error[:,1]/truth[:,1]})
-    df.to_csv(model_path.replace(".pt","") + ".csv",
+    df.to_csv(model_path.replace(".pt","") + "_TEST.csv",
               sep="\t",
               index=False)
 
