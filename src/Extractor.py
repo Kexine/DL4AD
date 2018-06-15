@@ -107,7 +107,8 @@ class H5Dataset(Dataset):
         for idx, val in enumerate(file_names):
             # check if h5 is corrupted by checking for file signature exception
             try:
-                f = h5py.File(self.root_dir + '/' + file_names[idx], 'r')
+                f = h5py.File(self.root_dir + '/' + file_names[idx], 'r') # ,
+                # driver = 'core', backing_store=False)
             except OSError:
                 print("File {} is corrupted and will be removed from list".format(file_names[idx]))
                 f.close()

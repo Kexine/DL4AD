@@ -337,7 +337,15 @@ def main():
 
         try:
             if progressbar is not None:
-                bar = progressbar.ProgressBar(max_value = len(train_loader))
+                widgets = [progressbar.widgets.DynamicMessage('loss'), ' ',
+                           progressbar.widgets.Percentage(),
+                           ' of ', progressbar.widgets.DataSize('max_value'),
+                           ' ', progressbar.widgets.Bar(),
+                           ' ', progressbar.widgets.Timer(),
+                           ' ', progressbar.widgets.AdaptiveETA(),
+                           ' ']
+                bar = progressbar.ProgressBar(max_value = len(train_loader),
+                                              widgets = widgets)
                 bar.dynamic_messages['Loss'] = float('inf')
             for batch_idx, (data, target) in enumerate(train_loader):
                 # Move the input and target data on the GPU
@@ -362,12 +370,13 @@ def main():
                 # Adjusting the parameters according to the loss function
                 optimizer.step()
                 if batch_idx % BATCH_LOSS_RATE  == 0 and batch_idx != 0:
-                    print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    if progressbar is not None:
+                        bar.update(batch_idx, loss=loss.item())
+                    else:
+                        print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-                    if progressbar is not None:
-                        bar.update(batch_idx, 'Loss', loss.item())
 
                     save_model(model, model_path, epoch,
                                train_loss = loss.item())
