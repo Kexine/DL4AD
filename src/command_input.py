@@ -330,7 +330,7 @@ def main():
         print("EPOCH {}".format(epoch))
         print("Batch Size: {}\t| Eval Rate: {}".format(batch_size, eval_rate))
         print("Splitted Training Set into {} Training and {} Validation:".format(eval_fraction,round(1-eval_fraction,2)))
-        print("{} Training Samples\t| {} Evaluation Samples".format(len(train_split), len(eval_split)))
+        print("{} Training Samples\t| {} Evaluation Samples".format(len(train_set), len(eval_set)))
         print("{} Training Batches\t| {} Evaluation Batches".format(len(train_loader), len(eval_loader)))
         print("---------------------------------------------------------------")
         model.train()
