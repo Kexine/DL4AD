@@ -307,8 +307,8 @@ def main():
     num_train_epochs = 5
 
     weights = torch.eye(2)
-    weights[0,0] = 0.7
-    weights[1,1] = 0.3  # this is the strange lambda
+    weights[0,0] = 0.5
+    weights[1,1] = 0.45  # this is the strange lambda
     weights = weights.to(device)
 
     loss_function = WeightedMSELoss()
@@ -316,8 +316,8 @@ def main():
     start_time = time.time()
 
 
-    # show loss each after m batches
-    BATCH_LOSS_RATE = 1
+    # save model after m batches
+    MODEL_SAVE_RATE = 50
     #
     # train_split, eval_split = optimized_split(train_set,
     #                                           eval_set,
@@ -379,34 +379,33 @@ def main():
                 loss.backward()
                 # Adjusting the parameters according to the loss function
                 optimizer.step()
-                if batch_idx % BATCH_LOSS_RATE  == 0 and batch_idx != 0:
-                    if progressbar is not None:
-                        bar.update(batch_idx, loss=loss.item())
-                    else:
-                        print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+
+                if progressbar is not None:
+                    bar.update(batch_idx, loss=loss.item())
+                else:
+                    print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-
+                if batch_idx % MODEL_SAVE_RATE  == 0 and batch_idx != 0:
                     save_model(model, model_path, epoch,
                                train_loss = loss.item())
 
-                # ---------- Validation after n batches
-                if batch_idx % eval_rate == 0 and batch_idx != 0:
-                    print("---------------------------------------------------------------")
-                    model.eval()
-                    avg_loss = evaluate(model,
-                                        eval_loader,
-                                        loss_function,
-                                        weights)
-                    print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time,
-                                                                                 avg_loss))
-                    print("---------------------------------------------------------------")
-                    csv_path_eval_loss = model_path.replace('.pt', '_evalloss.csv')
-                    if avg_loss is not None:
-                        df_eval_loss = pd.DataFrame({'col1':[int(epoch)], 'col2':[avg_loss]})
+            # ---------- Validation after each epoch
+            print("---------------------------------------------------------------")
+            model.eval()
+            avg_loss = evaluate(model,
+                                eval_loader,
+                                loss_function,
+                                weights)
+            print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time,
+                                                                         avg_loss))
+            print("---------------------------------------------------------------")
+            csv_path_eval_loss = model_path.replace('.pt', '_evalloss.csv')
+            if avg_loss is not None:
+                df_eval_loss = pd.DataFrame({'col1':[int(epoch)], 'col2':[avg_loss]})
 
-                        with open(csv_path_eval_loss, 'a') as f:
+                with open(csv_path_eval_loss, 'a') as f:
                             df_eval_loss.to_csv(f,
                                                 sep="\t",
                                                 header=False,
