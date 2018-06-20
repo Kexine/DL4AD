@@ -39,6 +39,12 @@ import cProfile, pstats, io
 
 try:
     import progressbar
+    progress_widgets = [progressbar.widgets.DynamicMessage('loss'),
+                        ' ', progressbar.widgets.Percentage(),
+                        ' ', progressbar.widgets.Bar(),
+                        ' ', progressbar.widgets.Timer(),
+                        ' ', progressbar.widgets.AdaptiveETA(samples = 200),
+                        ' ', progressbar.widgets.CurrentTime()]
 except ModuleNotFoundError:
     progressbar = None
 
@@ -66,17 +72,8 @@ def load_model(model, model_path):
         print("No model found, starting training with new model!")
 
 
-def save_model(model, model_path, epoch, train_loss = None):
+def save_model(model, model_path):
     torch.save(model.state_dict(), model_path)
-    # also store a csv file with the train loss
-    if train_loss is not None:
-        csv_path = model_path.replace("pt", "csv")
-        df = pd.DataFrame({'col1':[int(epoch)], 'col2':[train_loss]})
-        with open(csv_path, 'a') as f:
-            df.to_csv(f,
-                      sep="\t",
-                      header=False,
-                      index=False)
 
 
 # Our neural network
@@ -225,19 +222,33 @@ def evaluate(model,
              verbose=True):
     with torch.no_grad():
         loss = 0
+        model = model.to(device)
+
+        if progressbar is not None:
+            eval_bar = progressbar.ProgressBar(max_value = len(eval_loader),
+                                               widgets = progress_widgets)
+
         for eval_idx, (data, target) in enumerate(eval_loader):
-            print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
-                  end="",
-                  flush=True)
-            data, target = data.to(device), target.to(device)
+            data = data.to(device)
+            target = target.to(device)
+
             output = model(data,
                            target[:,target_idx['speed']],
                            target[:,target_idx['command']])
             output_target = target[:,[target_idx['steer'],
                                       target_idx['gas']]]
-            loss += loss_function(output.double(),
-                                  output_target.double(),
-                                  weights.double()).item()
+            # output_target[:,1] = output_target[:,1] - target[:,target_idx['brake']]
+            current_loss = loss_function(output.double(),
+                                         output_target.double(),
+                                         weights.double()).item()
+            loss += current_loss
+
+            if progressbar is not None:
+                eval_bar.update(eval_idx, loss=loss/(eval_idx + 1))
+            else:
+                print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
+                      end="",
+                      flush=True)
 
     avg_loss = loss/len(eval_loader)
     return avg_loss
@@ -260,7 +271,7 @@ def main():
 
     parser.add_argument("-e", "--evalrate",
                         help="Evaluate every [N] training batches",
-                        default=200,
+                        default=263,  # this is basically 10 evals each epoch
                         type=int)
     # parser.add_argument("-f", "--fraction",
     #                     help="Fraction of training/validation part of data set",
@@ -304,38 +315,32 @@ def main():
 
     ############### Training
     lossx = []
-    num_train_epochs = 5
+    num_train_epochs = 15 
 
     weights = torch.eye(2)
     weights[0,0] = 0.5
-    weights[1,1] = 0.45  # this is the strange lambda
+    weights[1,1] = 0.5  # this is the strange lambda
     weights = weights.to(device)
 
     loss_function = WeightedMSELoss()
 
     start_time = time.time()
 
-
-    # save model after m batches
-    MODEL_SAVE_RATE = 50
-    #
-    # train_split, eval_split = optimized_split(train_set,
-    #                                           eval_set,
-    #                                           eval_fraction)
-
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=batch_size, # TODO: Decide on batchsize
                                                shuffle=True,
                                                pin_memory=False,
-                                               num_workers=8)
+                                               num_workers=4)
 
     eval_loader = torch.utils.data.DataLoader(eval_set,
                                               batch_size=batch_size,
                                               shuffle=True,
-                                              num_workers=8)
+                                              num_workers=4)
 
+    loss_df = pd.DataFrame([], columns=['train_loss', 'eval_loss', 'epoch'])
     for epoch in range(1, num_train_epochs + 1):
         optimizer = optim.Adam(model.parameters(), lr=0.0002)
+
 
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
@@ -347,20 +352,17 @@ def main():
 
         try:
             if progressbar is not None:
-                widgets = [progressbar.widgets.DynamicMessage('loss'), ' ',
-                           progressbar.widgets.Percentage(),
-                           ' of ', progressbar.widgets.DataSize('max_value'),
-                           ' ', progressbar.widgets.Bar(),
-                           ' ', progressbar.widgets.Timer(),
-                           ' ', progressbar.widgets.AdaptiveETA(),
-                           ' ']
                 bar = progressbar.ProgressBar(max_value = len(train_loader),
-                                              widgets = widgets)
-                bar.dynamic_messages['Loss'] = float('inf')
+                                              widgets = progress_widgets)
+
+            # initialize the train loss storing array
+            train_loss = np.zeros((eval_rate,))
+            # -------------------- Actual training
             for batch_idx, (data, target) in enumerate(train_loader):
                 # Move the input and target data on the GPU
                 data = data.to(device)
                 target = target.to(device)
+
                 # Zero out gradients from previous step
                 optimizer.zero_grad()
                 # Forward pass of the neural net
@@ -371,6 +373,7 @@ def main():
                 # Calculation of the loss function
                 output_target = target[:,[target_idx['steer'],
                                           target_idx['gas']]]  # DONE: remove magic numbers
+                # output_target[:,1] = output_target[:,1] - target[:,target_idx['brake']]
 
                 loss = loss_function(output.double(),
                                      output_target.double(),
@@ -380,45 +383,46 @@ def main():
                 # Adjusting the parameters according to the loss function
                 optimizer.step()
 
+                # store the training loss
+                train_loss[batch_idx % eval_rate] = loss.item()
+
                 if progressbar is not None:
-                    bar.update(batch_idx, loss=loss.item())
+                    bar.update(batch_idx, loss=np.mean(train_loss[:batch_idx % eval_rate]))
                 else:
                     print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-                if batch_idx % MODEL_SAVE_RATE  == 0 and batch_idx != 0:
-                    save_model(model, model_path, epoch,
-                               train_loss = loss.item())
+                if batch_idx % eval_rate  == eval_rate - 1:
+                    # ---------- Validation
+                    print("Evaluation ----------------------------------------------------")
+                    model.eval()
+                    eval_loss = evaluate(model,
+                                         eval_loader,
+                                         loss_function, weights)
+                    print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time,
+                                                                                 eval_loss))
+                    print("---------------------------------------------------------------")
 
-            # ---------- Validation after each epoch
-            print("---------------------------------------------------------------")
-            model.eval()
-            avg_loss = evaluate(model,
-                                eval_loader,
-                                loss_function,
-                                weights)
-            print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time,
-                                                                         avg_loss))
-            print("---------------------------------------------------------------")
-            csv_path_eval_loss = model_path.replace('.pt', '_evalloss.csv')
-            if avg_loss is not None:
-                df_eval_loss = pd.DataFrame({'col1':[int(epoch)], 'col2':[avg_loss]})
+                    loss_df = loss_df.append([[np.mean(train_loss), eval_loss, epoch]],
+                                             ignore_index=True)
 
-                with open(csv_path_eval_loss, 'a') as f:
-                            df_eval_loss.to_csv(f,
-                                                sep="\t",
-                                                header=False,
-                                                index=False)
+                    # # ---------- Also, save the model here
+                    # save_model(model, model_path, epoch,
+                    #            train_loss = loss.item())
+
 
         except KeyboardInterrupt:
             print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
-            save_model(model, model_path, epoch,
-                       train_loss = loss.item())
-            return
+            break
 
-        save_model(model, model_path, epoch,
-                   train_loss = loss.item())
+        save_model(model, model_path)
+
+        with open(model_path.replace(".pt", "_loss.csv"), 'w') as f:
+            loss_df.to_csv(f, sep="\t", header=True, index=True)
+            # TODO: can also be done with appending instead of overwriting
+            loss_df = pd.DataFrame([], columns=['train_loss', 'eval_loss', 'epoch'])
+
 
 
 if  __name__=="__main__":

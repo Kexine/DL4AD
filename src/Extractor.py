@@ -148,6 +148,10 @@ class H5Dataset(Dataset):
         data = current_file['rgb'][idx]
         targets = current_file['targets'][idx]
 
+        # enhance the acceleration data
+
+        targets[target_idx['gas']] = targets[target_idx['gas']] - targets[target_idx['brake']]
+
         if self.transform:
             sample = (self.transform(data),
                       torch.Tensor(targets))
