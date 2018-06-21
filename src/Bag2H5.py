@@ -43,6 +43,41 @@ def rescale(cv2image, height=88, width=200):
     rescaled = cv2.resize(cv2image ,(width, height), interpolation = cv2.INTER_CUBIC)
     return rescaled
 
+def get_direction_string(command):
+        if command == 3:
+            return 'Left'
+        if command == 4:
+            return 'Right'
+        if command == 5:
+            return 'Straight'
+        if command == 2:
+            return 'Follow Lane'
+
+
+
+def get_complementary_cmd(topic, command):
+    if topic=='/group_left_cam/node_left_cam/image_raw/compressed':
+        if command == 2: # middle cam is follow lane
+            return 4 # set left cam to right
+        if command == 4: # middle cam is right
+            return 4 # set left cam to right
+        if command == 3: # middle cam is left
+            return 3 # set left cam to left
+    if topic=='/group_right_cam/node_right_cam/image_raw/compressed':
+        if command == 2: # middle cam is follow lane
+            return 3 # set left cam to right
+        if command == 4: # middle cam is right
+            return 4 # set left cam to right
+        if command == 3: # middle cam is left
+            return 3 # set left cam to left
+
+    #
+    #
+    # if topic=='/group_right_cam/node_right_cam/image_raw/compressed':
+    #     if command == 2: # middle cam is follow lane
+    #         comp_cmd = 4
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--bag",
@@ -102,18 +137,19 @@ def main():
             if current_buttons.buttons[4] == 1:
                 # f["targets"][idx] = 3
                 command = 3
-                dir_string = 'Left'
+                dir_string = get_direction_string(command)
             else:
                 if current_buttons.buttons[5] == 1:
                     command = 4
-                    dir_string = 'Right'
+                    dir_string = get_direction_string(command)
+
                 else:
                     if current_buttons.buttons[5] == 1 and current_buttons.buttons[4] == 1:
                         command = 5
-                        dir_string = 'Straight'
+                        dir_string = get_direction_string(command)
                     else:
                         command = 2
-                        dir_string = 'Follow Lane'
+                        dir_string = get_direction_string(command)
 
 
 
@@ -126,30 +162,80 @@ def main():
         if topics=='/group_middle_cam/node_middle_cam/image_raw/compressed':
             # if current_buttons is not None:
             #     if current_buttons.buttons[5]==1.0:
-            image = msg_to_mat(msg)
+            image_m = msg_to_mat(msg)
             if current_buttons is not None:
                 print(msg.header.stamp, current_buttons.buttons, idx+1 )
 
             else:
                 print(msg.header.stamp)
-
-
-
             font = cv2.FONT_HERSHEY_SIMPLEX
+            dir_string = get_direction_string(command)
             if command is not None:
-                cv2.putText(image,'{} {}'.format(command,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
+                cv2.putText(image_m,'{} {}'.format(command,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
+            cv2.imshow('middlecam',image_m)
 
-            cv2.imshow('pic',image)
-            cv2.waitKey(0)
-            rescaled_image = rescale(image)
-            if command is None:
-                f["targets"][idx] = -1
+
+        if topics=='/group_right_cam/node_right_cam/image_raw/compressed':
+            # if current_buttons is not None:
+            #     if current_buttons.buttons[5]==1.0:
+            image_r = msg_to_mat(msg)
+            if current_buttons is not None:
+                print(msg.header.stamp, current_buttons.buttons, idx+1 )
+
             else:
-                f["targets"][idx] = command
-            f["rgb"][idx,...] = rescaled_image
+                print(msg.header.stamp)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cmp_cmd = get_complementary_cmd(topics, command)
+            dir_string = get_direction_string(cmp_cmd)
 
-            if idx>=500:
-                break
+            if command is not None:
+                cv2.putText(image_r,'{} {}'.format(cmp_cmd,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
+            cv2.imshow('rightcam', image_r)
+
+        if topics=='/group_left_cam/node_left_cam/image_raw/compressed':
+            # if current_buttons is not None:
+            #     if current_buttons.buttons[5]==1.0:
+            image_l = msg_to_mat(msg)
+            if current_buttons is not None:
+                print(msg.header.stamp, current_buttons.buttons, idx+1 )
+
+            else:
+                print(msg.header.stamp)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cmp_cmd = get_complementary_cmd(topics, command)
+            dir_string = get_direction_string(cmp_cmd)
+
+            if cmp_cmd is not None:
+                cv2.putText(image_l,'{} {}'.format(cmp_cmd,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
+            cv2.imshow('leftcam', image_l)
+
+
+
+            # font = cv2.FONT_HERSHEY_SIMPLEX
+            # if command is not None:
+            #     cv2.putText(image,'{} {}'.format(command,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
+            #
+            # cv2.imshow('pic',image)
+            cv2.waitKey(0)
+            # rescaled_image = rescale(image)
+
+
+
+
+
+
+
+
+
+
+            # if command is None:
+            #     f["targets"][idx] = -1
+            # else:
+            #     f["targets"][idx] = command
+            # f["rgb"][idx,...] = rescaled_image
+
+            # if idx>=500:
+            #     break
 
 
 
@@ -157,17 +243,17 @@ def main():
     # time_elapsed = datetime.now() - start_time
 
     # print('\nTime elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
-    f.close()
-
-
-    f = h5py.File('myfile.hdf5','r')
-
-    cv2.putText(image,'{} {}'.format(command,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
-    cv2.imshow('pic',f['rgb'][1])
-
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    f.close()
+    # f.close()
+    #
+    #
+    # f = h5py.File('myfile.hdf5','r')
+    #
+    # cv2.putText(image,'{} {}'.format(command,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
+    # cv2.imshow('pic',f['rgb'][1])
+    #
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    # f.close()
     bag.close()
 
 if __name__=="__main__":
