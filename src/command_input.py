@@ -301,7 +301,7 @@ def main():
     un_composed = transforms.Compose([JustNormalize(std=1)])
 
     train_set = H5Dataset(root_dir = traindata_path,
-                          transform=composed)
+                          transform=un_composed)
     eval_set = H5Dataset(root_dir = valdata_path,
                          transform=un_composed)
     # orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
@@ -330,12 +330,14 @@ def main():
                                                batch_size=batch_size, # TODO: Decide on batchsize
                                                shuffle=True,
                                                pin_memory=False,
-                                               num_workers=4)
+                                               num_workers=4,
+                                               drop_last=True)
 
     eval_loader = torch.utils.data.DataLoader(eval_set,
                                               batch_size=batch_size,
                                               shuffle=True,
-                                              num_workers=4)
+                                              num_workers=4,
+                                              drop_last=True)
 
     loss_df = pd.DataFrame([], columns=['train_loss', 'eval_loss', 'epoch'])
     for epoch in range(1, num_train_epochs + 1):
@@ -404,7 +406,8 @@ def main():
                                                                                  eval_loss))
                     print("---------------------------------------------------------------")
 
-                    loss_df = loss_df.append([[np.mean(train_loss), eval_loss, epoch]],
+                    loss_df = loss_df.append(pd.DataFrame([[np.mean(train_loss), eval_loss, epoch]],
+                                                          columns=['train_loss', 'eval_loss', 'epoch']),
                                              ignore_index=True)
 
                     # # ---------- Also, save the model here
@@ -421,8 +424,6 @@ def main():
         with open(model_path.replace(".pt", "_loss.csv"), 'w') as f:
             loss_df.to_csv(f, sep="\t", header=True, index=True)
             # TODO: can also be done with appending instead of overwriting
-            loss_df = pd.DataFrame([], columns=['train_loss', 'eval_loss', 'epoch'])
-
 
 
 if  __name__=="__main__":
