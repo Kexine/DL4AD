@@ -264,19 +264,13 @@ def main():
     parser.add_argument("-t", "--train",
                         help="Directory of the train data",
                         default='../data/AgentHuman/SeqTrain/train')
-
     parser.add_argument("-v", "--val",
                         help="Directory of the validation data",
                         default='../data/AgentHuman/SeqTrain/val')
-
     parser.add_argument("-e", "--evalrate",
                         help="Evaluate every [N] training batches",
                         default=263,  # this is basically 10 evals each epoch
                         type=int)
-    # parser.add_argument("-f", "--fraction",
-    #                     help="Fraction of training/validation part of data set",
-    #                     default=0.9,
-    #                     type=float)
     parser.add_argument("-b", "--batchsize",
                         help="Size of batches",
                         default=200,
@@ -288,7 +282,6 @@ def main():
     traindata_path = args.train
     valdata_path = args.val
     eval_rate = args.evalrate
-    # eval_fraction = args.fraction
     batch_size = args.batchsize
 
     composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
@@ -308,21 +301,16 @@ def main():
 
     model = Net().to(device)
     load_model(model, model_path)
-
-    # optimizer = optim.Adam(model.parameters(), lr=0.0002)
-
-    # criterion = nn.CrossEntropyLoss()
-
-    ############### Training
+    optimizer = optim.Adam(model.parameters(), lr=0.0002)
     lossx = []
-    num_train_epochs = 15 
-
     weights = torch.eye(2)
     weights[0,0] = 0.5
     weights[1,1] = 0.5  # this is the strange lambda
     weights = weights.to(device)
 
     loss_function = WeightedMSELoss()
+
+    num_train_epochs = 15 
 
     start_time = time.time()
 
@@ -340,10 +328,8 @@ def main():
                                               drop_last=True)
 
     loss_df = pd.DataFrame([], columns=['train_loss', 'eval_loss', 'epoch'])
+    ############### Training
     for epoch in range(1, num_train_epochs + 1):
-        optimizer = optim.Adam(model.parameters(), lr=0.0002)
-
-
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
         print("Batch Size: {}\t| Eval Rate: {}".format(batch_size, eval_rate))
@@ -406,13 +392,14 @@ def main():
                                                                                  eval_loss))
                     print("---------------------------------------------------------------")
 
+                    model.train()
+
                     loss_df = loss_df.append(pd.DataFrame([[np.mean(train_loss), eval_loss, epoch]],
                                                           columns=['train_loss', 'eval_loss', 'epoch']),
                                              ignore_index=True)
 
                     # # ---------- Also, save the model here
-                    # save_model(model, model_path, epoch,
-                    #            train_loss = loss.item())
+                    # save_model(model, model_path)
 
 
         except KeyboardInterrupt:
