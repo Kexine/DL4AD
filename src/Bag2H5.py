@@ -1,30 +1,21 @@
 #!/usr/bin/env python
 '''
 Rosbag's wild clusterfuck of packages needed:
-sudo apt-get install:
-python-rosbag
-python-genmsg
-python-genpy
-python-rosgraph
-python-cv-bridge
-python-rosmsg
-python-sensor-msgs
+sudo apt-get install python-rosbag python-genmsg python-genpy python-rosgraph python-cv-bridge python-rosmsg python-sensor-msgs
 '''
-from __future__ import print_function
+from __future__ import print_function,division
 import argparse
 import rosbag
 import yaml
 import subprocess
 import std_msgs
-import matplotlib.pyplot as plt
 import cv2
-from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
-from datetime import datetime
 import rospy
-
+import os
 import h5py
-
+import progressbar
+import random
 
 def msg_to_mat(msg, debayer=False):
 
@@ -42,6 +33,7 @@ def msg_to_mat(msg, debayer=False):
 def rescale(cv2image, height=88, width=200):
     rescaled = cv2.resize(cv2image ,(width, height), interpolation = cv2.INTER_CUBIC)
     return rescaled
+
 
 def get_direction_string(command):
         if command == 3:
@@ -71,27 +63,66 @@ def get_complementary_cmd(topic, command):
         if command == 3: # middle cam is left
             return 3 # set left cam to left
 
-    #
-    #
-    # if topic=='/group_right_cam/node_right_cam/image_raw/compressed':
-    #     if command == 2: # middle cam is follow lane
-    #         comp_cmd = 4
+
+
+
+def make_dirs(destination):
+
+    middle_destination = destination + 'middle/'
+    right_destination = destination + 'right/'
+    left_destination = destination + 'left/'
+
+    if not os.path.isdir(destination):
+        print("Creating directory..." )
+        os.mkdir(destination)
+
+    if not os.path.isdir(middle_destination):
+        print("Creating directory..." )
+        os.mkdir(middle_destination)
+
+    if not os.path.isdir(right_destination):
+        print("Creating directory..." )
+        os.mkdir(right_destination)
+
+
+    if not os.path.isdir(left_destination):
+        print("Creating directory..." )
+        os.mkdir(left_destination)
+
+
+    return middle_destination, right_destination, left_destination
+
 
 
 def main():
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--bag",
                         help="path to RosBag")
     parser.add_argument("-o", "--offset",
                         help="Set offset from playback start in seconds",
-                        default = 60)
+                        default = 0)
+    parser.add_argument("-l", "--location",
+                        help="location, e.g.: campus",
+                        default = 'campus')
+    parser.add_argument("-d", "--destination",
+                        help="destination directory of the h5 files,e.g. : ~/DL4AD/data/custom/campus/")
+
     args = parser.parse_args()
+    destination = args.destination
+    location = args.location
     bag_path = args.bag
-    bag = rosbag.Bag(bag_path, 'r' )
-    bag_topics = bag.get_type_and_topic_info()[1].keys()
     offset = float(args.offset)
 
-    # print("Topics in the bag: \n{}".format(bag_topics))
+
+    # create directories and return paths
+    middle_destination, right_destination, left_destination = make_dirs(destination)
+
+    bag = rosbag.Bag(bag_path, 'r' )
+
+    # get amount of files needed to maintain 200 images per h5 fily
+    n_files = int(bag.get_message_count('/group_middle_cam/node_middle_cam/image_raw/compressed')/200)
+
 
     '''
     bag_topics[0] -> right cam
@@ -100,161 +131,155 @@ def main():
     bag_topics[3] -> middle cam
     '''
 
-    # bridge = CvBridge()
-    # dtype, n_channels = bridge.encoding_as_cvtype2('8UC3')
-
-    dummy_file = h5py.File("../data/AgentHuman/SeqTrain/data_03663.h5")
-    # print(type(dummy_file['rgb'][0]), )
-
-    cv2.imshow('pic',dummy_file['rgb'][0])
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    f = h5py.File('myfile.hdf5','w')
-    dset = f.create_dataset("rgb", (2000,88,200,3), np.uint8)
-    dset = f.create_dataset("targets", (2000,1), 'f')
-
-
-    info_dict = yaml.load(rosbag.Bag(bag_path, 'r')._get_yaml_info())
-    st_time = datetime.now()
     current_buttons = None
     command = None
-    start_time = rospy.Time(1529149890.831419 + offset) # t.secs=10
-    for idx, (topics, msg, t) in enumerate(bag.read_messages(start_time=start_time)):
-        # timestamp_verbose = datetime.fromtimestamp(t.to_time())
-        # print(timestamp_verbose.strftime('%Y-%m-%d %H:%M:%S'), topics)
-        #
-        # for i, val in enumerate(bag.read_messages(bag_topics[2])):
-        #     print(i,val[1].buttons)
 
+    start_time = rospy.Time(bag.get_start_time() + offset) # t.secs=10
+
+    COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight', None: None}
+    cnt_middle = 0
+    cnt_right = 0
+    cnt_left = 0
+
+    file_cnt_m = 0
+    file_cnt_r = 0
+    file_cnt_l = 0
+
+    widgets = [ progressbar.widgets.Bar(),
+           ' ', progressbar.widgets.Timer(),
+           ' ', progressbar.widgets.AdaptiveETA(),
+           ' ']
+    bar = progressbar.ProgressBar(max_value = bag.get_message_count(),
+                              widgets = widgets)
+
+    for idx, (topics, msg, t) in enumerate(bag.read_messages(start_time=start_time)):
         if topics=='/joy':
             '''
             if current_buttons.buttions[4] == 1 -> turn left
             if current_buttons.buttions[5] == 1 -> turn right
             '''
             current_buttons = msg
-            COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
+
             if current_buttons.buttons[4] == 1:
-                # f["targets"][idx] = 3
                 command = 3
-                dir_string = get_direction_string(command)
+                dir_string = COMMAND_DICT[command]
             else:
                 if current_buttons.buttons[5] == 1:
                     command = 4
-                    dir_string = get_direction_string(command)
+                    dir_string = COMMAND_DICT[command]
 
                 else:
                     if current_buttons.buttons[5] == 1 and current_buttons.buttons[4] == 1:
                         command = 5
-                        dir_string = get_direction_string(command)
+                        dir_string = COMMAND_DICT[command]
                     else:
                         command = 2
-                        dir_string = get_direction_string(command)
+                        dir_string = COMMAND_DICT[command]
 
 
 
+        if topics == '/group_middle_cam/node_middle_cam/image_raw/compressed':
+            if cnt_middle >= 200 or cnt_middle == 0:
+                f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,'middle',file_cnt_m),'w')
+                dset = f_m.create_dataset("rgb", (200,88,200,3), np.uint8)
+                dset = f_m.create_dataset("targets", (200,1), 'f')
+                cnt_middle = 0
+                file_cnt_m += 1
 
-            # print(current_buttons.buttons)
-            # if current_buttons.buttons[5]==1.0:
-            # print(t, current_buttons.buttons)
+            image = msg_to_mat(msg)
+            rescaled_image = rescale(image)
 
-
-        if topics=='/group_middle_cam/node_middle_cam/image_raw/compressed':
-            # if current_buttons is not None:
-            #     if current_buttons.buttons[5]==1.0:
-            image_m = msg_to_mat(msg)
-            if current_buttons is not None:
-                print(msg.header.stamp, current_buttons.buttons, idx+1 )
-
+            # save middle cam information
+            if command is None:
+                f_m["targets"][cnt_middle] = -1
             else:
-                print(msg.header.stamp)
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            dir_string = get_direction_string(command)
-            if command is not None:
-                cv2.putText(image_m,'{} {}'.format(command,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
-            cv2.imshow('middlecam',image_m)
+                f_m["targets"][cnt_middle] = command
+            f_m["rgb"][cnt_middle,...] = rescaled_image
+            cnt_middle +=1
 
+        if topics == '/group_right_cam/node_right_cam/image_raw/compressed':
+            if cnt_right >= 200 or cnt_right == 0:
+                f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,'right',file_cnt_r),'w')
+                dset = f_r.create_dataset("rgb", (200,88,200,3), np.uint8)
+                dset = f_r.create_dataset("targets", (200,1), 'f')
+                cnt_right = 0
+                file_cnt_r += 1
 
-        if topics=='/group_right_cam/node_right_cam/image_raw/compressed':
-            # if current_buttons is not None:
-            #     if current_buttons.buttons[5]==1.0:
-            image_r = msg_to_mat(msg)
-            if current_buttons is not None:
-                print(msg.header.stamp, current_buttons.buttons, idx+1 )
+            image = msg_to_mat(msg)
+            rescaled_image = rescale(image)
 
-            else:
-                print(msg.header.stamp)
-            font = cv2.FONT_HERSHEY_SIMPLEX
             cmp_cmd = get_complementary_cmd(topics, command)
-            dir_string = get_direction_string(cmp_cmd)
 
-            if command is not None:
-                cv2.putText(image_r,'{} {}'.format(cmp_cmd,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
-            cv2.imshow('rightcam', image_r)
-
-        if topics=='/group_left_cam/node_left_cam/image_raw/compressed':
-            # if current_buttons is not None:
-            #     if current_buttons.buttons[5]==1.0:
-            image_l = msg_to_mat(msg)
-            if current_buttons is not None:
-                print(msg.header.stamp, current_buttons.buttons, idx+1 )
-
+            if cmp_cmd is None:
+                f_r["targets"][cnt_right] = -1
             else:
-                print(msg.header.stamp)
-            font = cv2.FONT_HERSHEY_SIMPLEX
+                f_r["targets"][cnt_right] = cmp_cmd
+            f_r["rgb"][cnt_right,...] = rescaled_image
+            cnt_right +=1
+
+        if topics == '/group_left_cam/node_left_cam/image_raw/compressed':
+            if cnt_left >= 200 or cnt_left == 0:
+                f_l = h5py.File(left_destination + '{}_{}_{:05d}.h5'.format(location,'left',file_cnt_l),'w')
+                dset = f_l.create_dataset("rgb", (200,88,200,3), np.uint8)
+                dset = f_l.create_dataset("targets", (200,1), 'f')
+                cnt_left = 0
+                file_cnt_l += 1
+
+            image = msg_to_mat(msg)
+            rescaled_image = rescale(image)
+
             cmp_cmd = get_complementary_cmd(topics, command)
-            dir_string = get_direction_string(cmp_cmd)
+            if cmp_cmd is None:
+                f_l["targets"][cnt_left] = -1
+            else:
+                f_l["targets"][cnt_left] = cmp_cmd
 
-            if cmp_cmd is not None:
-                cv2.putText(image_l,'{} {}'.format(cmp_cmd,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
-            cv2.imshow('leftcam', image_l)
+            f_l["rgb"][cnt_left,...] = rescaled_image
+            cnt_left +=1
 
+        bar.update(idx)
 
+    # remove last h5 file if not complete
+    f_m = h5py.File(middle_destination + 'campus_middle_{:05d}.h5'.format(file_cnt_m-1),'r')
+    if f_m['rgb'][-1].all() == 0:
+        os.remove(middle_destination + 'campus_middle_{:05d}.h5'.format(file_cnt_m-1))
+        os.remove(right_destination + 'campus_right_{:05d}.h5'.format(file_cnt_m-1))
+        os.remove(left_destination + 'campus_left_{:05d}.h5'.format(file_cnt_m-1))
+        print("removing:\n{}\n{}\n{}".format(
+        'campus_middle_{:05d}.h5'.format(file_cnt_m-1),
+        'campus_right_{:05d}.h5'.format(file_cnt_m-1),
+        'campus_left_{:05d}.h5'.format(file_cnt_m-1)
+        ))
+    f_m.close
+    
+    # show random picture
+    file_idx = random.randint(0, int(file_cnt_m-1))
+    f_m = h5py.File(middle_destination + 'campus_middle_{:05d}.h5'.format(file_idx),'r')
+    f_l = h5py.File(left_destination + 'campus_left_{:05d}.h5'.format(file_idx),'r')
+    f_r = h5py.File(right_destination + 'campus_right_{:05d}.h5'.format(file_idx),'r')
 
-            # font = cv2.FONT_HERSHEY_SIMPLEX
-            # if command is not None:
-            #     cv2.putText(image,'{} {}'.format(command,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
-            #
-            # cv2.imshow('pic',image)
-            cv2.waitKey(0)
-            # rescaled_image = rescale(image)
+    font = cv2.FONT_HERSHEY_SIMPLEX
 
+    pic_idx =random.randint(0,200)
 
+    m_img = cv2.resize(f_m['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
+    cv2.putText( m_img ,'{}'.format(f_m['targets'][1]) ,(10,30), font, 1,(0,0,255),2)
+    cv2.imshow('pic_m',m_img)
 
+    r_img = cv2.resize(f_r['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
+    cv2.putText( r_img ,'{}'.format(f_r['targets'][1]) ,(10,30), font, 1,(0,0,255),2)
+    cv2.imshow('pic_r',r_img)
 
+    l_img = cv2.resize(f_l['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
+    cv2.putText( l_img ,'{}'.format(f_l['targets'][1]) ,(10,30), font, 1,(0,0,255),2)
+    cv2.imshow('pic_l',l_img)
 
-
-
-
-
-
-            # if command is None:
-            #     f["targets"][idx] = -1
-            # else:
-            #     f["targets"][idx] = command
-            # f["rgb"][idx,...] = rescaled_image
-
-            # if idx>=500:
-            #     break
-
-
-
-
-    # time_elapsed = datetime.now() - start_time
-
-    # print('\nTime elapsed (hh:mm:ss.ms) {}'.format(time_elapsed))
-    # f.close()
-    #
-    #
-    # f = h5py.File('myfile.hdf5','r')
-    #
-    # cv2.putText(image,'{} {}'.format(command,dir_string),(10,30), font, 1.0 ,(0,0,255),2)
-    # cv2.imshow('pic',f['rgb'][1])
-    #
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    # f.close()
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     bag.close()
+
+
+
 
 if __name__=="__main__":
     main()
