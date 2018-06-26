@@ -16,6 +16,7 @@ import os
 import h5py
 import progressbar
 import random
+import math
 
 def msg_to_mat(msg, debayer=False):
 
@@ -55,6 +56,7 @@ def get_complementary_cmd(topic, command):
             return 4 # set left cam to right
         if command == 3: # middle cam is left
             return 3 # set left cam to left
+
     if topic=='/group_right_cam/node_right_cam/image_raw/compressed':
         if command == 2: # middle cam is follow lane
             return 3 # set left cam to right
@@ -62,6 +64,8 @@ def get_complementary_cmd(topic, command):
             return 4 # set left cam to right
         if command == 3: # middle cam is left
             return 3 # set left cam to left
+
+    return float('nan')
 
 
 
@@ -108,11 +112,19 @@ def main():
     parser.add_argument("-d", "--destination",
                         help="destination directory of the h5 files,e.g. : ~/DL4AD/data/custom/campus/")
 
+    parser.add_argument("-s", "--show",
+                        help="set to True or False, shows camera input",
+                        action='store_true')
+
     args = parser.parse_args()
     destination = args.destination
     location = args.location
     bag_path = args.bag
     offset = float(args.offset)
+    SHOW_CAM = args.show
+
+    STEERING_OFFSET = 0.45
+
 
 
     # create directories and return paths
@@ -122,6 +134,9 @@ def main():
 
     # get amount of files needed to maintain 200 images per h5 fily
     n_files = int(bag.get_message_count('/group_middle_cam/node_middle_cam/image_raw/compressed')/200)
+    print(SHOW_CAM)
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
 
 
     '''
@@ -132,7 +147,8 @@ def main():
     '''
 
     current_buttons = None
-    command = None
+    command = float('nan')
+    cmp_cmd = float('nan')
 
     start_time = rospy.Time(bag.get_start_time() + offset) # t.secs=10
 
@@ -176,13 +192,20 @@ def main():
                         command = 2
                         dir_string = COMMAND_DICT[command]
 
+            # turning left is positive, turning right is negative
+            analog_steer = current_buttons.axes[0]
+            # left_stick_up_down = current_buttons.axes[1]
+
+            # right_stick_left_right =  current_buttons.axes[2]
+            analog_gas =  current_buttons.axes[3]
+
 
 
         if topics == '/group_middle_cam/node_middle_cam/image_raw/compressed':
             if cnt_middle >= 200 or cnt_middle == 0:
                 f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,'middle',file_cnt_m),'w')
                 dset = f_m.create_dataset("rgb", (200,88,200,3), np.uint8)
-                dset = f_m.create_dataset("targets", (200,1), 'f')
+                dset = f_m.create_dataset("targets", (200,3), 'f')
                 cnt_middle = 0
                 file_cnt_m += 1
 
@@ -190,18 +213,28 @@ def main():
             rescaled_image = rescale(image)
 
             # save middle cam information
-            if command is None:
-                f_m["targets"][cnt_middle] = -1
+
+            if math.isnan(command):
+                f_m["targets"][cnt_middle] = float('nan')
             else:
-                f_m["targets"][cnt_middle] = command
+                targets_m = np.array([command, analog_steer, analog_gas ])
+                f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
+
+            if SHOW_CAM==True:
+                cv2.putText( image ,'{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
+                    f_m['targets'][cnt_middle][1],f_m['targets'][cnt_middle][2]),
+                    (10,30), font, 0.5,(0,0,255),2)
+                cv2.imshow('pic_m',image)
+
             cnt_middle +=1
+
 
         if topics == '/group_right_cam/node_right_cam/image_raw/compressed':
             if cnt_right >= 200 or cnt_right == 0:
                 f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,'right',file_cnt_r),'w')
                 dset = f_r.create_dataset("rgb", (200,88,200,3), np.uint8)
-                dset = f_r.create_dataset("targets", (200,1), 'f')
+                dset = f_r.create_dataset("targets", (200,3), 'f')
                 cnt_right = 0
                 file_cnt_r += 1
 
@@ -210,18 +243,27 @@ def main():
 
             cmp_cmd = get_complementary_cmd(topics, command)
 
-            if cmp_cmd is None:
-                f_r["targets"][cnt_right] = -1
+            if math.isnan(cmp_cmd):
+                f_r["targets"][cnt_right] = float('nan')
             else:
-                f_r["targets"][cnt_right] = cmp_cmd
+                targets_r = np.array([cmp_cmd, analog_steer + STEERING_OFFSET, analog_gas ])
+                f_r["targets"][cnt_right] = targets_r
             f_r["rgb"][cnt_right,...] = rescaled_image
+
+            if SHOW_CAM==True:
+                cv2.putText( image ,'{} {:.8f} {:.8f}'.format(f_r['targets'][cnt_right][0],
+                    f_r['targets'][cnt_right][1],f_r['targets'][cnt_right][2]),
+                    (10,30), font, 0.5,(0,0,255),2)
+                cv2.imshow('pic_r',image)
             cnt_right +=1
+
+
 
         if topics == '/group_left_cam/node_left_cam/image_raw/compressed':
             if cnt_left >= 200 or cnt_left == 0:
                 f_l = h5py.File(left_destination + '{}_{}_{:05d}.h5'.format(location,'left',file_cnt_l),'w')
                 dset = f_l.create_dataset("rgb", (200,88,200,3), np.uint8)
-                dset = f_l.create_dataset("targets", (200,1), 'f')
+                dset = f_l.create_dataset("targets", (200,3), 'f')
                 cnt_left = 0
                 file_cnt_l += 1
 
@@ -229,15 +271,32 @@ def main():
             rescaled_image = rescale(image)
 
             cmp_cmd = get_complementary_cmd(topics, command)
-            if cmp_cmd is None:
-                f_l["targets"][cnt_left] = -1
-            else:
-                f_l["targets"][cnt_left] = cmp_cmd
 
+            if math.isnan(cmp_cmd):
+                f_l["targets"][cnt_left] = float('nan')
+            else:
+                targets_l = np.array([cmp_cmd, analog_steer - STEERING_OFFSET, analog_gas ])
+                f_l["targets"][cnt_left] = targets_l
             f_l["rgb"][cnt_left,...] = rescaled_image
+
+            if SHOW_CAM==True:
+                cv2.putText( image ,'{} {:.8f} {:.8f}'.format(f_l['targets'][cnt_left][0],
+                    f_l['targets'][cnt_left][1],f_l['targets'][cnt_left][2]),
+                    (10,30), font, 0.5,(0,0,255),2)
+                cv2.imshow('pic_l',image)
+
             cnt_left +=1
 
         bar.update(idx)
+        if SHOW_CAM:# and (cnt_middle==cnt_left) and (cnt_middle==cnt_right):
+            cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+
+
+
+
+
+
 
     # remove last h5 file if not complete
     f_m = h5py.File(middle_destination + 'campus_middle_{:05d}.h5'.format(file_cnt_m-1),'r')
@@ -251,27 +310,26 @@ def main():
         'campus_left_{:05d}.h5'.format(file_cnt_m-1)
         ))
     f_m.close
-    
+
     # show random picture
     file_idx = random.randint(0, int(file_cnt_m-1))
     f_m = h5py.File(middle_destination + 'campus_middle_{:05d}.h5'.format(file_idx),'r')
     f_l = h5py.File(left_destination + 'campus_left_{:05d}.h5'.format(file_idx),'r')
     f_r = h5py.File(right_destination + 'campus_right_{:05d}.h5'.format(file_idx),'r')
 
-    font = cv2.FONT_HERSHEY_SIMPLEX
 
-    pic_idx =random.randint(0,200)
+    pic_idx =random.randint(0,199)
 
     m_img = cv2.resize(f_m['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
-    cv2.putText( m_img ,'{}'.format(f_m['targets'][1]) ,(10,30), font, 1,(0,0,255),2)
+    cv2.putText( m_img ,'{}'.format(f_m['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
     cv2.imshow('pic_m',m_img)
 
     r_img = cv2.resize(f_r['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
-    cv2.putText( r_img ,'{}'.format(f_r['targets'][1]) ,(10,30), font, 1,(0,0,255),2)
+    cv2.putText( r_img ,'{}'.format(f_r['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
     cv2.imshow('pic_r',r_img)
 
     l_img = cv2.resize(f_l['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
-    cv2.putText( l_img ,'{}'.format(f_l['targets'][1]) ,(10,30), font, 1,(0,0,255),2)
+    cv2.putText( l_img ,'{}'.format(f_l['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
     cv2.imshow('pic_l',l_img)
 
     cv2.waitKey(0)
