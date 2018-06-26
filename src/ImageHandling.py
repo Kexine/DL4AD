@@ -10,6 +10,16 @@ target_idx = {'steer': 0,
               'speed': 10,
               'command': 24}
 
+
+'''
+speed in target_idx_raiscar means actually gas, but speed is used to change not
+to much in the code
+'''
+target_idx_raiscar = {'command' : 0,
+                      'steer' : 1,
+                      'speed' : 2}
+
+
 def _get_current_width():
     return (plt.gcf().get_size_inches()*plt.gcf().dpi)[0]
 
@@ -18,7 +28,8 @@ class ImageBrowser:
     """ Get the datasets and at which index to start."""
     def __init__(self,
                  datasets,
-                 idx = None):
+                 idx = None,
+                 raiscar = False):
 
         for i in range(len(datasets) - 1):
             assert len(datasets[i]) == len(datasets[i+1]), \
@@ -38,9 +49,16 @@ class ImageBrowser:
 
         self.SPEED_LIMIT_VISUAL = 5
 
+        self.raiscar = raiscar
+
         # radius for circle drawing
         self.radius = 25
         self.max_speed = 30
+
+        if self.raiscar == False:
+            self.target_idx = target_idx
+        else:
+            self.target_idx = target_idx_raiscar
 
     def __update_index(self, idx):
         # truncate at beginning and end of the dataset
@@ -51,13 +69,13 @@ class ImageBrowser:
         self.current_target = self.datasets[0][self.idx][1]
 
     def cmd2verbose(self):
-        cmd = int(self.current_target[target_idx['command']])
+        cmd = int(self.current_target[self.target_idx['command']])
         return self.COMMAND_DICT[cmd]
 
     # draw the current steering angle as arrow
     def draw_angle(self):
-        rad = self.current_target[target_idx['steer']]
-        speed = self.current_target[target_idx['speed']]
+        rad = self.current_target[self.target_idx['steer']]
+        speed = self.current_target[self.target_idx['speed']]
         # speed_norm = self.radius /(speed+self.radius) * self.radius
         speed_norm = speed/(self.radius)
         if speed>self.SPEED_LIMIT_VISUAL:
@@ -91,8 +109,8 @@ class ImageBrowser:
 
         target = self.current_target
 
-        st_angle = target[target_idx['steer']]
-        speed = target[target_idx['speed']]
+        st_angle = target[self.target_idx['steer']]
+        speed = target[self.target_idx['speed']]
         verbose_cmd = self.cmd2verbose()
         plt.title("File: {}| Image {}\n Steering Angle: {:.4f}| Speed: {:.2f}\n Command {}"\
                   .format(filename, image_idx, st_angle,speed, verbose_cmd))
