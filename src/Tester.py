@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from ImageHandling import ImageBrowser
+# from ImageHandling import ImageBrowser
 from Extractor import H5Dataset, target_idx
 import torch
 from torchvision import datasets, transforms
@@ -17,34 +17,33 @@ except ModuleNotFoundError:
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class Agent(object):
+class BranchedAgent(object):
+    """ An agent for the branched imitation learing stuff."""
+    def __init__(self, model_path, agent_type):
+
+        self.model = Branched.Net().to(device)
+        self.model.load_state_dict(torch.load(model_path))
+        self.model.eval()
+
+    def get_control(self, img, speed, command):
+        with torch.no_grad():
+            # print("high level command: {}".format(int(command.numpy()[0]-2)))
+            # print("all branches with targets: {}".format(self.model(img, speed)))
+            # print("forward pass: {}".format(self.model(img, speed)[int(command.numpy()[0])]))
+            command = int(command.cpu().numpy()[0]) - 2
+            return self.model(img, speed)[command]
+
+
+class CommandInputAgent(object):
     """ An agent for the imitation learing stuff."""
     def __init__(self, model_path, agent_type):
-        if agent_type == "command_input":
-            self.model = command_input.Net()  # .to(device)
-        else:
-            if agent_type == "branched":
-                self.model = Branched.Net()
-
+        self.model = command_input.Net().to(device)
         self.model.load_state_dict(torch.load(model_path))
-
         self.model.eval()
 
     def get_control(self, img, speed, command):
         with torch.no_grad():
             return self.model(img, speed, command)
-
-    def get_control_branched(self, img, speed, command):
-        with torch.no_grad():
-            # print("high level command: {}".format(int(command.numpy()[0]-2)))
-            # print("all branches with targets: {}".format(self.model(img, speed)))
-            # print("forward pass: {}".format(self.model(img, speed)[int(command.numpy()[0])]))
-
-
-
-            return self.model(img, speed)[int(command.numpy()[0]-2)]
-
-
 
 
 if __name__=="__main__":
@@ -71,13 +70,15 @@ if __name__=="__main__":
     model_path = args.model
 
     # ---------- Initialization
-    basic_transform = transforms.ToTensor()
-
     test_set = H5Dataset(root_dir = dataset_path,
                          transform= transforms.ToTensor())
 
     print("Loading model...")
-    agent = Agent(model_path, net_type)
+    if net_type == 'command_input':
+        agent = CommandInputAgent(model_path, net_type)
+    elif net_type == 'branched':
+        agent = BranchedAgent(model_path, net_type)
+        dummy_test = False
 
     # arrays for storing predictions and ground truth
     length = len(test_set)
@@ -88,31 +89,32 @@ if __name__=="__main__":
     if progressbar is not None:
         bar = progressbar.ProgressBar(max_value = len(test_set))
     for idx, (data, target) in enumerate(test_set):
+        data, target = data.to(device), target.to(device)
         data.unsqueeze_(0)
         target.unsqueeze_(0)
 
         speed = target[:,target_idx['speed']]
         command = target[:,target_idx['command']]
 
-        if net_type == 'command_input':
-            pred[idx,:] = agent.get_control(data, speed, command).numpy()
-            print(pred[idx,:])
-        if net_type == 'branched':
-            pred[idx,:] = agent.get_control_branched(data, speed, command).numpy()
+        pred[idx,:] = agent.get_control(data, speed, command).cpu().numpy()
 
-        truth[idx,0] = target[:,target_idx['steer']].numpy()
-        truth[idx,1] = target[:,target_idx['gas']].numpy()
+        truth[idx,0] = target[:,target_idx['steer']].cpu().numpy()
+        truth[idx,1] = target[:,target_idx['gas']].cpu().numpy()
 
         if progressbar is not None:
             bar.update(idx)
 
     error = pred - truth
 
-    mse = np.sum((error)**2,
-                 axis=0)
+    mse = np.linalg.norm(error, axis=0)
 
     mean = error.mean(axis=0)
     median = error[int(error.shape[0]/2), :]
+
+    # calculate R-squared error
+    R_squared = np.ones(truth.shape[1]) - (mse / np.linalg.norm(truth,axis=0))
+
+    print("R²: {}".format(R_squared))
 
     print("MSE:\t{}\nMean error:\t{}\nMedian error:\t{}".format(mse,
                                                                 error.mean(axis=0),
@@ -127,8 +129,9 @@ if __name__=="__main__":
                        'abs_error_gas': error[:,1],
                        'rel_error_steer': error[:,0]/truth[:,0],
                        'rel_error_gas': error[:,1]/truth[:,1]})
-    df.to_csv(model_path.replace(".pt","") + "_TEST.csv",
+    df.to_csv(model_path.replace(".pt", "_TEST.csv"),
               sep="\t",
               index=False)
 
     # browser = ImageBrowser([test_set])
+    # browser.show()

@@ -255,7 +255,7 @@ def main():
                         type=int)
     parser.add_argument("-b", "--batchsize",
                         help="Size of batches",
-                        default=200,
+                        default=100,
                         type=int)
 
     args = parser.parse_args()

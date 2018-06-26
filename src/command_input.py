@@ -51,6 +51,7 @@ except ModuleNotFoundError:
 
 # define the cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print("Running on device: {}".format(device))
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
@@ -304,13 +305,13 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=0.0002)
     lossx = []
     weights = torch.eye(2)
-    weights[0,0] = 0.5
-    weights[1,1] = 0.5  # this is the strange lambda
+    weights[0,0] = 0.75
+    weights[1,1] = 0.25
     weights = weights.to(device)
 
     loss_function = WeightedMSELoss()
 
-    num_train_epochs = 15 
+    num_train_epochs = 15
 
     start_time = time.time()
 
@@ -329,6 +330,8 @@ def main():
 
     loss_df = pd.DataFrame([], columns=['train_loss', 'eval_loss', 'epoch'])
     ############### Training
+    model.train()
+
     for epoch in range(1, num_train_epochs + 1):
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
@@ -336,15 +339,14 @@ def main():
         print("{} Training Samples\t| {} Evaluation Samples".format(len(train_set), len(eval_set)))
         print("{} Training Batches\t| {} Evaluation Batches".format(len(train_loader), len(eval_loader)))
         print("---------------------------------------------------------------")
-        model.train()
-
         try:
             if progressbar is not None:
                 bar = progressbar.ProgressBar(max_value = len(train_loader),
                                               widgets = progress_widgets)
 
             # initialize the train loss storing array
-            train_loss = np.zeros((eval_rate,))
+            train_loss = 0
+            amount_trains = 0
             # -------------------- Actual training
             for batch_idx, (data, target) in enumerate(train_loader):
                 # Move the input and target data on the GPU
@@ -372,10 +374,11 @@ def main():
                 optimizer.step()
 
                 # store the training loss
-                train_loss[batch_idx % eval_rate] = loss.item()
+                train_loss += loss.item()
+                amount_trains += 1
 
                 if progressbar is not None:
-                    bar.update(batch_idx, loss=np.mean(train_loss[:batch_idx % eval_rate]))
+                    bar.update(batch_idx, loss=train_loss / (amount_trains))
                 else:
                     print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
@@ -393,10 +396,12 @@ def main():
                     print("---------------------------------------------------------------")
 
                     model.train()
-
-                    loss_df = loss_df.append(pd.DataFrame([[np.mean(train_loss), eval_loss, epoch]],
+                    loss_df = loss_df.append(pd.DataFrame([[train_loss/amount_trains, eval_loss, epoch]],
                                                           columns=['train_loss', 'eval_loss', 'epoch']),
                                              ignore_index=True)
+
+                    train_loss = 0
+                    amount_trains = 0
 
                     # # ---------- Also, save the model here
                     # save_model(model, model_path)
