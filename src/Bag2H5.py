@@ -53,8 +53,9 @@ def get_direction_string(command):
 
 
 def get_complementary_cmd(topic, command):
+    print(command)
     if topic=='/group_left_cam/node_left_cam/image_raw/compressed':
-        if command == 2: # middle cam is follow lane
+        if command == 2 or command == 5: # middle cam is follow lane
             return 4 # set left cam to right
         if command == 4: # middle cam is right
             return 4 # set left cam to right
@@ -62,7 +63,7 @@ def get_complementary_cmd(topic, command):
             return 3 # set left cam to left
 
     if topic=='/group_right_cam/node_right_cam/image_raw/compressed':
-        if command == 2: # middle cam is follow lane
+        if command == 2 or command == 5: # middle cam is follow lane
             return 3 # set left cam to right
         if command == 4: # middle cam is right
             return 4 # set left cam to right
@@ -244,7 +245,7 @@ def main():
 
             image = msg_to_mat(msg)
             rescaled_image = rescale(image)
-
+            print(command)
             cmp_cmd = get_complementary_cmd(topics, command)
 
             if math.isnan(cmp_cmd):
