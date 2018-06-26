@@ -73,6 +73,10 @@ target_idx = {'steer': 0,  # float
               'camera yaw': 27  #
 }
 
+target_idx_raiscar = {'command' : 0,
+                      'steer' : 1,
+                      'gas' : 2}
+
 ### CONSTANTS ###
 
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
@@ -87,7 +91,8 @@ class H5Dataset(Dataset):
     '''
     def __init__(self, root_dir,
                  transform=None,
-                 images_per_file=IMAGES_PER_FILE):
+                 images_per_file=IMAGES_PER_FILE,
+                 raiscar = False):
         self.root_dir = root_dir
         self.transform = transform
 
@@ -99,6 +104,11 @@ class H5Dataset(Dataset):
 
         # Queue storing the order of the filehandles in RAM
         self.file_idx_queue = collections.deque()
+
+        if raiscar:
+            self.target_idx = target_idx_raiscar
+        else:
+            self.target_idx = target_idx
 
 
     def _check_corruption(self,file_names):
@@ -150,7 +160,7 @@ class H5Dataset(Dataset):
 
         # enhance the acceleration data
 
-        targets[target_idx['gas']] = targets[target_idx['gas']] - targets[target_idx['brake']]
+        targets[self.target_idx['gas']] = targets[self.target_idx['gas']] - targets[self.target_idx['brake']]
 
         if self.transform:
             sample = (self.transform(data),
