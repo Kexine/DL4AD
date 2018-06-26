@@ -41,10 +41,14 @@ def get_direction_string(command):
             return 'Left'
         if command == 4:
             return 'Right'
-        if command == 5:
+        '''
+        actual command for straight is 5, but 2 is also interpreted as Straight
+        since in the phyisical system no follow lane command is used
+        '''
+        if command == 5 or command==2:
             return 'Straight'
-        if command == 2:
-            return 'Follow Lane'
+        # if command == 2:
+        #     return 'Follow Lane'
 
 
 
@@ -189,7 +193,7 @@ def main():
                         command = 5
                         dir_string = COMMAND_DICT[command]
                     else:
-                        command = 2
+                        command = 5
                         dir_string = COMMAND_DICT[command]
 
             # turning left is positive, turning right is negative

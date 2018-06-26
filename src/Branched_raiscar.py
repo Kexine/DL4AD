@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 Deep Learning in Autonomous Driving
-Project 4: Exercise sheet 3, Task 1
+Project 4: Exercise sheet 3, Task 2
 Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 """
 
+#!/usr/bin/env python3
 from __future__ import print_function, division
 import h5py
 import numpy as np
@@ -20,7 +21,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.dataset import random_split
 from torchvision import datasets, transforms
 
 # our custom modules
@@ -29,13 +29,10 @@ from ImageHandling import ImageBrowser
 from Extractor import H5Dataset, target_idx_raiscar, better_random_split, optimized_split
 from CustomLoss import WeightedMSELoss
 
-import sys
-import time
+from command_input import load_model, save_model, progress_widgets
 
 import warnings
 torch.manual_seed(1)
-
-import cProfile, pstats, io
 
 try:
     import progressbar
@@ -48,37 +45,17 @@ try:
 except ModuleNotFoundError:
     progressbar = None
 
-
-# define the cuda device
+BATCH_LOSS_RATE = 1
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print("Running on device: {}".format(device))
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
-### CONSTANTS ###
-
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
-def load_model(model, model_path):
-    '''
-    Check if a pre trained model exists and load it if found
-    '''
-    print("Checking if some model exists...")
 
-    if os.path.isfile(model_path):
-        model.load_state_dict(torch.load(model_path))
-        print("Model was found and loaded!")
-    else:
-        print("No model found, starting training with new model!")
-
-
-def save_model(model, model_path):
-    torch.save(model.state_dict(), model_path)
-
-
-# Our neural network
 class Net(nn.Module):
+    branches = []
     def __init__(self):
         super(Net, self).__init__()
         #8 layers if con layers for image module
@@ -91,9 +68,11 @@ class Net(nn.Module):
         self.conv7 = nn.Conv2d(128, 256, kernel_size=3, padding=1)#(output = 25*11)
         self.conv8 = nn.Conv2d(256, 256, kernel_size=3, padding=1)#(output = 25*11)
 
+
         #defining 2 different dropouts required after the conv and fc layers
         self.conv_drop = nn.Dropout2d(p=0.2)
         self.fc_drop = nn.Dropout2d(p=0.5)
+
 
         #batch normalisers for every convolution layer
         self.conv1_bn = nn.BatchNorm2d(32)
@@ -105,6 +84,7 @@ class Net(nn.Module):
         self.conv7_bn = nn.BatchNorm2d(256)
         self.conv8_bn = nn.BatchNorm2d(256)
 
+
         #2 fc layers for image module
         self.fc1 = nn.Linear(25*11*256, 512)
         self.fc2 = nn.Linear(512, 512)
@@ -114,20 +94,20 @@ class Net(nn.Module):
         self.fc4= nn.Linear(128,128)
 
         #4 fc layers for concatenated module
-        # self.fc5= nn.Linear(768,512)
-        self.fc5= nn.Linear(640,512)
+        self.fc5= nn.Linear(512,512)
         self.fc6= nn.Linear(512,256)
         self.fc7= nn.Linear(256,256)
 
         #5 for action output
         self.fc8= nn.Linear(256,2)
+        self.fc9= nn.Linear(256,1)
 
 
-    def forward(self, x,c):
+    def forward(self, x):
         #######conv layers##############
-        x = self.conv1(x)
-        x = self.conv1_bn(x)
-        x = self.conv_drop(x)
+        x= self.conv1(x)
+        x= self.conv1_bn(x)
+        x= self.conv_drop(x)
         x = F.relu(x)
 
         x= self.conv2(x)
@@ -167,55 +147,52 @@ class Net(nn.Module):
 
         ###################################
 
-        # x = x.view(-1, 204*92*256)      ### TODO: change this
-        x = x.view(-1, 25*11*256)
+        x = x.view(-1, 25*11*256)      ### do change this
 
         #########fully connected layers####
         x = self.fc1(x)
-        x = self.fc_drop(x)
+        x= self.fc_drop(x)
         x = F.relu(x)
 
         x = self.fc2(x)
-        x = self.fc_drop(x)
+        x= self.fc_drop(x)
         x = F.relu(x)
-        ####################################
 
-        # ####for  measurement(speed)#########
-        # m = m.view(m.shape[0], -1)
-        # m = self.fc3(m)
-        # m= self.fc_drop(m)
-        # m = F.relu(m)
+        #####do something for control########
+
+        ####for  measurement(speed)#########
+        ###not to use in real raiscar#######
+        # speed = speed.view(speed.shape[0], -1)
+        # speed = self.fc3(speed)
+        # speed= self.fc_drop(speed)
+        # speed = F.relu(speed)
         #
-        # m = self.fc4(m)
-        # m = self.fc_drop(m)
-        # m = F.relu(m)
-        # ####################################
-
-        #########for control################
-        c = c.view(c.shape[0], -1)
-        c = self.fc3(c)
-        c = self.fc4(c)
-
-        ###concatenating previous layers####
-        j = torch.cat((x,c), 1)
-        j = self.fc5(j)
-        j = self.fc_drop(j)
-        j = F.relu(j)
+        # speed = self.fc4(speed)
+        # speed= self.fc_drop(speed)
+        # speed = F.relu(speed)
+        ####################################
 
         ####################################
-        j = self.fc6(j)
+        # j = torch.cat((x), 1)
+        j = self.fc5(x)
         j= self.fc_drop(j)
         j = F.relu(j)
 
-        j = self.fc7(j)
-        j = self.fc_drop(j)
-        j = F.relu(j)
+        ####initiating branches############
+        branch_config = [["Steer", "Gas"],["Steer", "Gas"], ["Steer", "Gas"],["Steer", "Gas"]]
+        ###there were 5 in the code they made, dontn have idea why####
+        branches=[]
+        for i in range(0, len(branch_config)):
+            branch_output = self.fc6(j)
+            branch_output= self.fc_drop(branch_output)
+            branch_output = F.relu(branch_output)
+            branch_output = self.fc7(branch_output)
+            branch_output= self.fc_drop(branch_output)
+            branch_output = F.relu(branch_output)
+            branches.append(self.fc8(branch_output))
+        #have to look for this regarding the dataset , on how to use it?
 
-        #### output action##########
-        action = self.fc8(j)
-
-        return action
-
+        return branches
 
 def evaluate(model,
              eval_loader,
@@ -231,51 +208,53 @@ def evaluate(model,
                                                widgets = progress_widgets)
 
         for eval_idx, (data, target) in enumerate(eval_loader):
-            data = data.to(device)
-            target = target.to(device)
+            data, target = data.to(device), target.to(device)
+            output_branches = model(data)
 
-            output = model(data,
-                            target[:,target_idx_raiscar['command']])
-            output_target = target[:,[target_idx_raiscar['steer'],
-                                      target_idx_raiscar['gas'],
-                                      ]]
-            # output_target[:,1] = output_target[:,1] - target[:,target_idx_raiscar['brake']]
-            current_loss = loss_function(output.double(),
-                                         output_target.double(),
-                                         weights.double()).item()
-            loss += current_loss
+            # Calculation of the loss function
+            for c in range(0,len(target[0].shape)):
+                output_target = target[:,[target_idx_raiscar['steer'],
+                                      target_idx_raiscar['gas']]]
+                current_branch = int(target[c,target_idx_raiscar['command']] - 2)
+                output = output_branches[current_branch]
 
-            if progressbar is not None:
-                eval_bar.update(eval_idx, loss=loss/(eval_idx + 1))
-            else:
-                print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
-                      end="",
-                      flush=True)
+                current_loss = loss_function(output.double(),
+                                             output_target.double(),
+                                             weights.double()).item()
+                loss += current_loss
+
+                if progressbar is not None:
+                    eval_bar.update(eval_idx, loss=loss/(eval_idx + 1))
+                else:
+                    print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
+                          end="",
+                          flush=True)
 
     avg_loss = loss/len(eval_loader)
     return avg_loss
 
 
 def main():
+    # --------------- Parse arguments ---------------
     import argparse
     import time
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--model",
                         help="A (existing?) model file to store to",
-                        default='../model/command_input.pt')
+                        default='../model/branched.pt')
     parser.add_argument("-t", "--train",
                         help="Directory of the train data",
-                        default='../data/AgentHuman/SeqTrain/train')
+                        default='../data/AgentHuman/SeqTrain')
     parser.add_argument("-v", "--val",
                         help="Directory of the validation data",
                         default='../data/AgentHuman/SeqTrain/val')
     parser.add_argument("-e", "--evalrate",
                         help="Evaluate every [N] training batches",
-                        default=263,  # this is basically 10 evals each epoch
+                        default=200,
                         type=int)
     parser.add_argument("-b", "--batchsize",
                         help="Size of batches",
-                        default=200,
+                        default=100,
                         type=int)
 
     args = parser.parse_args()
@@ -286,6 +265,7 @@ def main():
     eval_rate = args.evalrate
     batch_size = args.batchsize
 
+    # --------------- Prepare Datasets ---------------
     composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
                                     GaussianBlur(1.5),
                                     SaltNPepper(0.1),
@@ -293,26 +273,29 @@ def main():
                                     RegionDropout((10, 10),10)],
                                    normalize = True,
                                    std=1)
+
     un_composed = transforms.Compose([JustNormalize(std=1)])
 
     train_set = H5Dataset(root_dir = traindata_path,
                           transform=composed)
+
     eval_set = H5Dataset(root_dir = valdata_path,
                          transform=un_composed)
-    # orig_train_set = H5Dataset(root_dir = '../data/AgentHuman/SeqTrain', transform=un_composed)
 
+
+    # --------------- Init training ---------------
     model = Net().to(device)
     load_model(model, model_path)
     optimizer = optim.Adam(model.parameters(), lr=0.0002)
     lossx = []
     weights = torch.eye(2)
-    weights[0,0] = 0.75
-    weights[1,1] = 0.25
+    weights[0,0] = 0.7
+    weights[1,1] = 0.3  # this is the strange lambda
     weights = weights.to(device)
 
     loss_function = WeightedMSELoss()
 
-    num_train_epochs = 100
+    num_train_epochs = 15
 
     start_time = time.time()
 
@@ -330,9 +313,7 @@ def main():
                                               drop_last=True)
 
     loss_df = pd.DataFrame([], columns=['train_loss', 'eval_loss', 'epoch'])
-    ############### Training
-    model.train()
-
+    # --------------- Train ---------------
     for epoch in range(1, num_train_epochs + 1):
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
@@ -340,73 +321,70 @@ def main():
         print("{} Training Samples\t| {} Evaluation Samples".format(len(train_set), len(eval_set)))
         print("{} Training Batches\t| {} Evaluation Batches".format(len(train_loader), len(eval_loader)))
         print("---------------------------------------------------------------")
+        model.train()
+
         try:
             if progressbar is not None:
                 bar = progressbar.ProgressBar(max_value = len(train_loader),
                                               widgets = progress_widgets)
-
             # initialize the train loss storing array
-            train_loss = 0
-            amount_trains = 0
+            train_loss = np.zeros((eval_rate,))
+
             # -------------------- Actual training
             for batch_idx, (data, target) in enumerate(train_loader):
                 # Move the input and target data on the GPU
-                data = data.to(device)
-                target = target.to(device)
-                # Zero out gradients from previous step
+                data, target = data.to(device), target.to(device)
+
+               # Zero out gradients from previous step
                 optimizer.zero_grad()
                 # Forward pass of the neural net
-                output = model(data,
-                                target[:,target_idx_raiscar['command']])
+                output_branches = model(data)
 
-                output_target = target[:,[target_idx_raiscar['steer'],
-                                          target_idx_raiscar['gas']]]
-                                            # DONE: remove magic numbers
-                # output_target[:,1] = output_target[:,1] - target[:,target_idx_raiscar['brake']]
+                # Calculation of the loss function
+                train_loss[batch_idx % eval_rate] = 0
+                for c in range(0,len(target[0].shape)):
+                    output_target = target[:,[target_idx_raiscar['steer'],
+                                              target_idx_raiscar['gas']]]
 
+                    # for command = 2 => output = branches[0] ...
+                    current_branch = int(target[c, target_idx_raiscar['command']] - 2)
+                    output = output_branches[current_branch]
 
+                    loss = loss_function(output.double(),
+                                         output_target.double(),
+                                         weights.double())
+                    # Backward pass (gradient computation)
+                    loss.backward()
+                    # Adjusting the parameters according to the loss function
+                    optimizer.step()
 
-                loss = loss_function(output.double(),
-                                     output_target.double(),
-                                     weights.double())
-                # Backward pass (gradient computation)
-                loss.backward()
-                # Adjusting the parameters according to the loss function
-                optimizer.step()
-
-                # store the training loss
-                train_loss += loss.item()
-                amount_trains += 1
+                    # store the training loss
+                    train_loss[batch_idx % eval_rate] += loss.item()
 
                 if progressbar is not None:
-                    bar.update(batch_idx, loss=train_loss / (amount_trains))
+                    bar.update(batch_idx, loss=np.mean(train_loss[:batch_idx % eval_rate]))
                 else:
                     print('{:04.2f}s - Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-                if batch_idx % eval_rate  == eval_rate - 1:
-                    # ---------- Validation
+
+                # ---------- Validation after n batches
+                if batch_idx % eval_rate == eval_rate - 1:
                     print("Evaluation ----------------------------------------------------")
                     model.eval()
                     eval_loss = evaluate(model,
                                          eval_loader,
-                                         loss_function, weights)
+                                         loss_function,
+                                         weights)
                     print("\n{:04.2f}s - Average Evaluation Loss: {:.6f}".format(time.time() - start_time,
                                                                                  eval_loss))
                     print("---------------------------------------------------------------")
-
                     model.train()
-                    loss_df = loss_df.append(pd.DataFrame([[train_loss/amount_trains, eval_loss, epoch]],
+
+                    loss_df = loss_df.append(pd.DataFrame([[np.mean(train_loss), eval_loss, epoch]],
                                                           columns=['train_loss', 'eval_loss', 'epoch']),
                                              ignore_index=True)
-
-                    train_loss = 0
-                    amount_trains = 0
-
-                    # # ---------- Also, save the model here
-                    # save_model(model, model_path)
-
 
         except KeyboardInterrupt:
             print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
