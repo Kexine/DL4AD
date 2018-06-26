@@ -216,6 +216,19 @@ class Net(nn.Module):
         return action
 
 
+    def extract_input(self, target):
+        """
+        Takes the target matrix and returns what the network would need as an input as a list.
+        Afterwards: call whats returned with an asterisk!
+        """
+        return [target[:, target_idx['speed']],
+                target[:, target_idx['command']]]
+
+    def extract_output(self, target):
+        return target[:, [target_idx['steer'],
+                          target_idx['gas']]]
+
+
 def evaluate(model,
              eval_loader,
              loss_function,
@@ -409,10 +422,15 @@ def main():
 
         except KeyboardInterrupt:
             print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
+            save_model(model, model_path)
+
+            with open(model_path.replace(".pt", "_loss.csv"), 'w') as f:
+                loss_df.to_csv(f, sep="\t", header=True, index=True)
+                # TODO: can also be done with appending instead of overwriting
             break
 
-        save_model(model, model_path)
 
+        save_model(model, model_path)
         with open(model_path.replace(".pt", "_loss.csv"), 'w') as f:
             loss_df.to_csv(f, sep="\t", header=True, index=True)
             # TODO: can also be done with appending instead of overwriting

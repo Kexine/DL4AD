@@ -29,6 +29,18 @@ net_types = ['command_input',
              'command_input_raiscar',
              'branched_raiscar']
 
+try:
+    import progressbar
+    progress_widgets = [progressbar.widgets.DynamicMessage('loss'),
+                        ' ', progressbar.widgets.Percentage(),
+                        ' ', progressbar.widgets.Bar(),
+                        ' ', progressbar.widgets.Timer(),
+                        ' ', progressbar.widgets.AdaptiveETA(samples = 200),
+                        ' ', progressbar.widgets.CurrentTime()]
+except ModuleNotFoundError:
+    progressbar = None
+    print("Progressbar not found. Please consider installing the module Progressbar2 for sweet-ass progressbars")
+
 def load_model(model, model_path):
     '''
     Check if a pre trained model exists and load it if found
@@ -40,6 +52,46 @@ def load_model(model, model_path):
         print("Model was found and loaded!")
     else:
         print("No model found, starting training with new model!")
+
+
+def evaluate(model, 
+             eval_loader,
+             loss_function,
+             weights):
+    model.eval()
+    with torch no_grad():
+        loss = 0
+        model = model.to(device)
+
+        if progressbar is not None:
+            eval_bar = progressbar.ProgressBar(max_value = len(eval_loader),
+                                               widgets = progress_widgets)
+
+        # actual evaluation
+        for eval_idx, (data, target) in enumerate(eval_loader):
+            data = data.to(device)
+            target = target.to(device)
+
+            model_input = model.extract_input(target)
+
+            output = model(data, *model_input)
+
+            output_target = model.extract_output(target)
+
+            current_loss = loss_function(output.double(),
+                                         output_target.double(),
+                                         weights.double()).item()
+            loss += current_loss
+
+            if progressbar is not None:
+                eval_bar.update(eval_idx, loss=loss/(eval_idx + 1))
+            else:
+                print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
+                      end="",
+                      flush=True)
+
+    avg_loss = loss/len(eval_loader)
+    return avg_loss
 
 
 if __name__ == "__main__":
@@ -149,3 +201,89 @@ if __name__ == "__main__":
 
     # -------------------- Prepare the dataframe for logging the loss
     loss_df = pd.DataFrame([], columns=['train_loss', 'eval_loss', 'epoch'])
+
+    # -------------------- A bit of flavour status
+    print(60*"-")
+    print("{:<30}".format("Batch Size: " + str(batch_size)), end="")
+    print("{:>30}".format("Eval Rate: " + str(eval_rate)))
+    print("{:<30}".format(str(len(train_set)) + "Training Samples"), end="")
+    print("{:>30}".format(str(len(eval_set)) + "Eval Samples"))
+    print("{:<30}".format(str(len(train_loader)) + "Training Batches"), end="")
+    print("{:>30}".format(str(len(eval_loader)) + "Eval Batches"))
+    print(60*"-", end="\n\n\n")
+
+    # -------------------- Start actual training
+    for epoch in range(1, amount_epochs + 1):
+        try:
+            print('{:#^60}'.format('Epoch ' + str(epoch)))
+
+            if progressbar is not None:
+                bar = progressbar.ProgressBar(max_value = len(train_loader),
+                                              widgets = progress_widgets)
+
+            # initialize the train loss calculation
+            train_loss = 0
+            amount_trains = 0
+
+            # -------------------- Start training for this epoch
+            for batch_idx, (data, target) in enumerate(train_loader):
+                # Move the input and target data on the GPU
+                data = data.to(device)
+                target = target.to(device)
+
+                # Zero out gradients from previous step
+                optimizer.zero_grad()
+                # Forward pass of the neural net
+
+                model_input = model.extract_input(target)
+
+                output = model(data, *model_input)
+
+                output_target = model.extract_output(target)
+
+                loss = loss_function(output,
+                                     output_target,
+                                     weights)  # TODO: Maybe we want the weights to be in the initializer
+
+                # Backward pass (gradient computation)
+                loss.backward()
+                # Adjusting the parameters according to the loss function
+                optimizer.step()
+
+                # store the training loss
+                train_loss += loss.item()
+                amount_trains += 1
+
+                if progressbar is not None:
+                    bar.update(batch_idx, loss=train_loss / (amount_trains))
+
+                # -------------------- Evaluate
+                if batch_idx & eval_rate == eval_rate - 1:
+                    print("{:-^60}".format("Evaluation"))
+                    eval_loss = evaluate(model,
+                                         eval_loader,
+                                         loss_function, weights)
+                    print(("{:-^60}".format("Eval loss: {:.5f}".format(eval_loss))))
+
+                    model.train()
+
+                    # -------------------- Store the loss
+                    loss_df = loss_df.append(pd.DataFrame([[train_loss/amount_trains, eval_loss, epoch]],
+                                                          columns=['train_loss', 'eval_loss', 'epoch']),
+                                             ignore_index=True)
+
+                    train_loss = 0
+                    amount_trains = 0
+
+                    # # ---------- Also, save the model here
+                    # save_model(model, model_path)
+
+        except KeyboardInterrupt:
+            print("Abort detected! Saving the model and exiting (Please don't hit C-c again >.<)")
+            break
+
+        save_model(model, model_path)
+
+        with open(model_path.replace(".pt", "_loss.csv"), 'w') as f:
+            loss_df.to_csv(f, sep="\t", header=True, index=True)
+            # TODO: can also be done with appending instead of overwriting
