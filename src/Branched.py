@@ -98,13 +98,22 @@ class Net(nn.Module):
         self.fc5= nn.Linear(640,512)
 
         # submodules for each branch
-        self.fc6_branch1
-        for branch in COMMAND_DICT.keys():
-            self.branch_submodules[branch] = nn.Linear(512, 256)
+        # For some reason, we have to hardcode this or else it won't work
+        self.fc6_branch1 = nn.Linear(512, 256)
+        self.fc7_branch1 = nn.Linear(256, 256)
+        self.fc8_branch1 = nn.Linear(256, 2)
 
-        # self.fc6= nn.Linear(512,256)
-        # self.fc7= nn.Linear(256,256)
-        # self.fc8= nn.Linear(256,2)
+        self.fc6_branch2 = nn.Linear(512, 256)
+        self.fc7_branch2 = nn.Linear(256, 256)
+        self.fc8_branch2 = nn.Linear(256, 2)
+
+        self.fc6_branch3 = nn.Linear(512, 256)
+        self.fc7_branch3 = nn.Linear(256, 256)
+        self.fc8_branch3 = nn.Linear(256, 2)
+
+        self.fc6_branch4 = nn.Linear(512, 256)
+        self.fc7_branch4 = nn.Linear(256, 256)
+        self.fc8_branch4 = nn.Linear(256, 2)
 
 
     def forward(self, x, speed, command):
@@ -187,30 +196,42 @@ class Net(nn.Module):
         # -------------------- applying branch submodules
 
         # apply to each branch
-        command_np = command.cpu().numpy()
-        output = torch.zeros(batch_size)
-        for branch in COMMAND_DICT.keys():
-            command_mapping = np.where(command == branch)
-            branch_output = j[command_mapping,:].view(-1,512)
+        output = torch.zeros(batch_size,2).to(x.device)
+        branches = list(COMMAND_DICT.keys())
 
-            branch_output = self.branch_submodules[branch](branch_output)
+        # branch 1
+        mapping_branch1 = np.where(command == branches[0])
+        branch1 = j[mapping_branch1,:].view(-1,512)
+        branch1 = self.fc6_branch1(branch1)
+        branch1 = self.fc7_branch1(branch1)
+        branch1 = self.fc8_branch1(branch1)
+        output[mapping_branch1, :] = branch1
 
-            # output[command_mapping] =
-            # self.f6_1(branch_input)
-        exit()
+        # branch 2
+        mapping_branch2 = np.where(command == branches[1])
+        branch2 = j[mapping_branch2,:].view(-1,512)
+        branch2 = self.fc6_branch2(branch2)
+        branch2 = self.fc7_branch2(branch2)
+        branch2 = self.fc8_branch2(branch2)
+        output[mapping_branch2, :] = branch2
 
+        # branch 3
+        mapping_branch3 = np.where(command == branches[2])
+        branch3 = j[mapping_branch3,:].view(-1,512)
+        branch3 = self.fc6_branch3(branch3)
+        branch3 = self.fc7_branch3(branch3)
+        branch3 = self.fc8_branch3(branch3)
+        output[mapping_branch3, :] = branch3
 
-        for i in range(0, len(branch_config)):
-            branch_output = self.fc6(j)
-            branch_output= self.fc_drop(branch_output)
-            branch_output = F.relu(branch_output)
-            branch_output = self.fc7(branch_output)
-            branch_output= self.fc_drop(branch_output)
-            branch_output = F.relu(branch_output)
-            branches.append(self.fc8(branch_output))
-        #have to look for this regarding the dataset , on how to use it?
+        # branch 4
+        mapping_branch4 = np.where(command == branches[3])
+        branch4 = j[mapping_branch4,:].view(-1,512)
+        branch4 = self.fc6_branch4(branch4)
+        branch4 = self.fc7_branch4(branch4)
+        branch4 = self.fc8_branch4(branch4)
+        output[mapping_branch4, :] = branch4
 
-        return branches
+        return output
 
 def evaluate(model,
              eval_loader,
@@ -227,30 +248,24 @@ def evaluate(model,
 
         for eval_idx, (data, target) in enumerate(eval_loader):
             data, target = data.to(device), target.to(device)
-            output_branches = model(data,
-                                    target[:, target_idx['speed']],
-                                    target[:, target_idx['command']])
+            output = model(data,
+                           target[:, target_idx['speed']],
+                           target[:, target_idx['command']])
 
             # Calculation of the loss function
-            print("len(target[0].shape): {}".len(target[0].shape))
-            exit()
-            for c in range(0,len(target[0].shape)):
-                output_target = target[:,[target_idx['steer'],
+            output_target = target[:,[target_idx['steer'],
                                       target_idx['gas']]]
-                current_branch = int(target[c,target_idx['command']] - 2)
-                output = output_branches[current_branch]
 
-                current_loss = loss_function(output.double(),
-                                             output_target.double(),
-                                             weights.double()).item()
-                loss += current_loss
+            current_loss = loss_function(output.double(),
+                                         output_target.double()).item()
+            loss += current_loss
 
-                if progressbar is not None:
-                    eval_bar.update(eval_idx, loss=loss/(eval_idx + 1))
-                else:
-                    print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
-                          end="",
-                          flush=True)
+            if progressbar is not None:
+                eval_bar.update(eval_idx, loss=loss/(eval_idx + 1))
+            else:
+                print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
+                      end="",
+                      flush=True)
 
     avg_loss = loss/len(eval_loader)
     return avg_loss
@@ -360,28 +375,22 @@ def main():
                # Zero out gradients from previous step
                 optimizer.zero_grad()
                 # Forward pass of the neural net
-                output_branches = model(data, target[:, target_idx['speed']], target[:, target_idx['command']])
+                output = model(data,
+                               target[:, target_idx['speed']],
+                               target[:, target_idx['command']])
 
-                # Calculation of the loss function
-                train_loss[batch_idx % eval_rate] = 0
-                for c in range(0,len(target[0].shape)):
-                    print("Foobar! {}".format(c))
-                    output_target = target[:,[target_idx['steer'],
-                                              target_idx['gas']]]
+                output_target = target[:,[target_idx['steer'],
+                                          target_idx['gas']]]
 
-                    # for command = 2 => output = branches[0] ...
-                    current_branch = int(target[c, target_idx['command']] - 2)
-                    output = output_branches[current_branch]
+                loss = loss_function(output.double(),
+                                     output_target.double())
+                # Backward pass (gradient computation)
+                loss.backward()
+                # Adjusting the parameters according to the loss function
+                optimizer.step()
 
-                    loss = loss_function(output.double(),
-                                         output_target.double())
-                    # Backward pass (gradient computation)
-                    loss.backward()
-                    # Adjusting the parameters according to the loss function
-                    optimizer.step()
-
-                    # store the training loss
-                    train_loss[batch_idx % eval_rate] += loss.item()
+                # store the training loss
+                train_loss[batch_idx % eval_rate] += loss.item()
 
                 if progressbar is not None:
                     bar.update(batch_idx, loss=np.mean(train_loss[:batch_idx % eval_rate]))
