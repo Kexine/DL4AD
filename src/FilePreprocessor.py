@@ -28,16 +28,16 @@ def main():
 
     args = parser.parse_args()
     data_path = args.data
-    fraction = args.fraction
+    fraction = float(args.fraction)
 
     destination_dir_train = data_path + '/train'
     destination_dir_val = data_path + '/val'
 
     # get file names
     file_names = sorted(os.listdir(data_path))
-
     # get total file list length
     total_length = len(file_names)
+
     # get length of training set
     train_length = int(fraction * total_length)
     # get length of validation set

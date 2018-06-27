@@ -41,16 +41,21 @@ def get_direction_string(command):
             return 'Left'
         if command == 4:
             return 'Right'
-        if command == 5:
+        '''
+        actual command for straight is 5, but 2 is also interpreted as Straight
+        since in the phyisical system no follow lane command is used
+        '''
+        if command == 5 or command==2:
             return 'Straight'
-        if command == 2:
-            return 'Follow Lane'
+        # if command == 2:
+        #     return 'Follow Lane'
 
 
 
 def get_complementary_cmd(topic, command):
+    print(command)
     if topic=='/group_left_cam/node_left_cam/image_raw/compressed':
-        if command == 2: # middle cam is follow lane
+        if command == 2 or command == 5: # middle cam is follow lane
             return 4 # set left cam to right
         if command == 4: # middle cam is right
             return 4 # set left cam to right
@@ -58,7 +63,7 @@ def get_complementary_cmd(topic, command):
             return 3 # set left cam to left
 
     if topic=='/group_right_cam/node_right_cam/image_raw/compressed':
-        if command == 2: # middle cam is follow lane
+        if command == 2 or command == 5: # middle cam is follow lane
             return 3 # set left cam to right
         if command == 4: # middle cam is right
             return 4 # set left cam to right
@@ -189,7 +194,7 @@ def main():
                         command = 5
                         dir_string = COMMAND_DICT[command]
                     else:
-                        command = 2
+                        command = 5
                         dir_string = COMMAND_DICT[command]
 
             # turning left is positive, turning right is negative
@@ -240,7 +245,7 @@ def main():
 
             image = msg_to_mat(msg)
             rescaled_image = rescale(image)
-
+            print(command)
             cmp_cmd = get_complementary_cmd(topics, command)
 
             if math.isnan(cmp_cmd):
