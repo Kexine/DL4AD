@@ -51,7 +51,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
-COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
+COMMAND_DICT =  {3: 'Left', 4: 'Right', 5: 'Straight'}
 
 
 class Net(nn.Module):
@@ -89,23 +89,29 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(25*11*256, 512)
         self.fc2 = nn.Linear(512, 512)
 
-        #3 fc layers for control and measurement modules
-        self.fc3= nn.Linear(1,128)
-        self.fc4= nn.Linear(128,128)
+        # layer before branching
+        self.fc5= nn.Linear(512,512)  # we skip fc3 and 4 because the simulator model needed it
 
-        #4 fc layers for concatenated module
-        self.fc5= nn.Linear(512,512)
-        self.fc6= nn.Linear(512,256)
-        self.fc7= nn.Linear(256,256)
+        # submodules for each branch
+        # For some reason, we have to hardcode this or else it won't work
+        self.fc6_branch1 = nn.Linear(512, 256)
+        self.fc7_branch1 = nn.Linear(256, 256)
+        self.fc8_branch1 = nn.Linear(256, 2)
 
-        #5 for action output
-        self.fc8= nn.Linear(256,2)
-        self.fc9= nn.Linear(256,1)
+        self.fc6_branch2 = nn.Linear(512, 256)
+        self.fc7_branch2 = nn.Linear(256, 256)
+        self.fc8_branch2 = nn.Linear(256, 2)
+
+        self.fc6_branch3 = nn.Linear(512, 256)
+        self.fc7_branch3 = nn.Linear(256, 256)
+        self.fc8_branch3 = nn.Linear(256, 2)
 
 
-    def forward(self, x):
+    def forward(self, img, command):
+        batch_size = img.shape[0]
+
         #######conv layers##############
-        x= self.conv1(x)
+        x= self.conv1(img)
         x= self.conv1_bn(x)
         x= self.conv_drop(x)
         x = F.relu(x)
@@ -151,48 +157,51 @@ class Net(nn.Module):
 
         #########fully connected layers####
         x = self.fc1(x)
-        x= self.fc_drop(x)
+        x = self.fc_drop(x)
         x = F.relu(x)
 
         x = self.fc2(x)
         x= self.fc_drop(x)
         x = F.relu(x)
 
-        #####do something for control########
-
-        ####for  measurement(speed)#########
-        ###not to use in real raiscar#######
-        # speed = speed.view(speed.shape[0], -1)
-        # speed = self.fc3(speed)
-        # speed= self.fc_drop(speed)
-        # speed = F.relu(speed)
-        #
-        # speed = self.fc4(speed)
-        # speed= self.fc_drop(speed)
-        # speed = F.relu(speed)
-        ####################################
-
-        ####################################
-        # j = torch.cat((x), 1)
         j = self.fc5(x)
-        j= self.fc_drop(j)
+        j = self.fc_drop(j)
         j = F.relu(j)
 
-        ####initiating branches############
-        branch_config = [["Steer", "Gas"],["Steer", "Gas"], ["Steer", "Gas"],["Steer", "Gas"]]
-        ###there were 5 in the code they made, dontn have idea why####
-        branches=[]
-        for i in range(0, len(branch_config)):
-            branch_output = self.fc6(j)
-            branch_output= self.fc_drop(branch_output)
-            branch_output = F.relu(branch_output)
-            branch_output = self.fc7(branch_output)
-            branch_output= self.fc_drop(branch_output)
-            branch_output = F.relu(branch_output)
-            branches.append(self.fc8(branch_output))
-        #have to look for this regarding the dataset , on how to use it?
+        # -------------------- applying branch submodules
+        # apply to each branch
+        output = torch.zeros(batch_size,2).to(x.device)
+        branches = list(COMMAND_DICT.keys())
 
-        return branches
+        # branch 1
+        mapping_branch1 = np.where(command == branches[0])[0]
+        if mapping_branch1.size > 0:
+            branch1 = j[mapping_branch1,:].view(-1,512)
+            branch1 = self.fc6_branch1(branch1)
+            branch1 = self.fc7_branch1(branch1)
+            branch1 = self.fc8_branch1(branch1)
+            output[mapping_branch1, :] = branch1
+
+        # branch 2
+        mapping_branch2 = np.where(command == branches[1])[0]
+        if mapping_branch2.size > 0:
+            branch2 = j[mapping_branch2,:].view(-1,512)
+            branch2 = self.fc6_branch2(branch2)
+            branch2 = self.fc7_branch2(branch2)
+            branch2 = self.fc8_branch2(branch2)
+            output[mapping_branch2, :] = branch2
+
+        # branch 3
+        mapping_branch3 = np.where(command == branches[2])[0]
+        if mapping_branch3.size > 0:
+            branch3 = j[mapping_branch3,:].view(-1,512)
+            branch3 = self.fc6_branch3(branch3)
+            branch3 = self.fc7_branch3(branch3)
+            branch3 = self.fc8_branch3(branch3)
+            output[mapping_branch3, :] = branch3
+
+        return output
+
 
 def evaluate(model,
              eval_loader,
