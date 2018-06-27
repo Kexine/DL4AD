@@ -8,6 +8,7 @@ Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 
 # basic python stuff
 import argparse
+import datetime as dt
 import pandas as pd
 import os
 
@@ -59,34 +60,17 @@ def get_output(net_type,
                model,
                data,
                target):
-    if net_type == 'command_input':
+    if net_type == 'command_input' or net_type == 'branched':
         return model(data,
                      target[:, target_idx['speed']],
                      target[:, target_idx['command']])
-    elif net_type == 'branched':
-        return  model(data,
-                      target[:,target_idx['speed']])
+
     elif net_type == 'command_input_raiscar':
         return  model(data,
                         target[:,target_idx_raiscar['command']])
-    elif net_type == 'branched_raiscar':
-        raise NotImplementedError
-
-
-def get_target(net_type,
-               target):
-    if net_type == 'command_input':
-        return target[:,[target_idx['steer'],
-                         target_idx['gas']]]
-    elif net_type == 'branched':
-        raise NotImplementedError
-    elif net_type == 'command_input_raiscar':
-        return target[:,[target_idx_raiscar['steer'],
-                        target_idx_raiscar['gas']]]
 
     elif net_type == 'branched_raiscar':
         raise NotImplementedError
-
 
 def evaluate(net_type,
              model,
@@ -110,7 +94,8 @@ def evaluate(net_type,
 
             output = get_output(net_type, model, data, target)
 
-            output_target = model.extract_output(target)
+            output_target = target[:, [target_idx['steer'],
+                                       target_idx['gas']]]
 
             current_loss = loss_function(output.double(),
                                          output_target.double()).item()
