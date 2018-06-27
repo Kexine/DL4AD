@@ -28,15 +28,20 @@ class WeightedMSELoss(MSELoss):
                   dimensions
                 - Target: :math:`(N, *)`, same shape as the input
     """
-    def __init__(self, size_average=True, reduce=True):
+    def __init__(self, weight_matrix, size_average=True, reduce=True):
         super(MSELoss, self).__init__(size_average, reduce)
+        self.weight_matrix = weight_matrix.double()
 
-    def forward(self, input, target, weight_matrix,
+    def forward(self, input, target,
                 size_average=True,
                 reduce = True):
         _assert_no_grad(target)
 
-        l = torch.mm((input - target)**2, weight_matrix)
+        input = input.double()
+        target = target.double()
+        # self.weight_matrix = weight_matrix.double()
+
+        l = torch.mm((input - target)**2, self.weight_matrix)
 
         if not self.reduce:
             return l
