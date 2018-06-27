@@ -48,6 +48,7 @@ Deep Learning for Autonomous Driving - Summer Semester 2018, Freiburg
 # Exercise 4
 
 - [ ] tune augmentation hyperparameters (difficult without response from the paper authors)
+
 - [ ] Train
     -[ ] Command Input Raiscar
         -[ ] augmented
