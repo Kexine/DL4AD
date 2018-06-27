@@ -55,7 +55,9 @@ def load_model(model, model_path):
     else:
         print("No model found, starting training with new model!")
 
-
+def save_model(model, model_path):
+    torch.save(model.state_dict(), model_path)
+    
 def get_output(net_type,
                model,
                data,
