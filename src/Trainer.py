@@ -102,7 +102,7 @@ if __name__ == "__main__":
                         "|".join(net_types))
     parser.add_argument("-m", "--model",
                         help="A (existing?) model file to store to",
-                        default='../model/command_input.pt')
+                        default=None)
     parser.add_argument("-t", "--train",
                         help="Directory of the train data",
                         default='../data/AgentHuman/SeqTrain/train')
@@ -136,6 +136,10 @@ if __name__ == "__main__":
     batch_size = args.batchsize
     no_transforms = args.no_transforms
     amount_epochs = args.epochs
+
+    # create the default model path based on 
+    if model_path is None:
+        model_path = dt.datetime.now().strftime("../model/%Y-%m-%d_%H%M{}.pt".format(net_type))
 
     assert net_type in net_types, "Please choose a proper Net!"
 
