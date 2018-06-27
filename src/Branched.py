@@ -94,16 +94,31 @@ class Net(nn.Module):
         self.fc4= nn.Linear(128,128)
 
         #4 fc layers for concatenated module
+        # layer before branching
         self.fc5= nn.Linear(640,512)
-        self.fc6= nn.Linear(512,256)
-        self.fc7= nn.Linear(256,256)
 
-        #5 for action output
-        self.fc8= nn.Linear(256,2)
-        self.fc9= nn.Linear(256,1)
+        # submodules for each branch
+        # For some reason, we have to hardcode this or else it won't work
+        self.fc6_branch1 = nn.Linear(512, 256)
+        self.fc7_branch1 = nn.Linear(256, 256)
+        self.fc8_branch1 = nn.Linear(256, 2)
+
+        self.fc6_branch2 = nn.Linear(512, 256)
+        self.fc7_branch2 = nn.Linear(256, 256)
+        self.fc8_branch2 = nn.Linear(256, 2)
+
+        self.fc6_branch3 = nn.Linear(512, 256)
+        self.fc7_branch3 = nn.Linear(256, 256)
+        self.fc8_branch3 = nn.Linear(256, 2)
+
+        self.fc6_branch4 = nn.Linear(512, 256)
+        self.fc7_branch4 = nn.Linear(256, 256)
+        self.fc8_branch4 = nn.Linear(256, 2)
 
 
-    def forward(self, x,speed):
+    def forward(self, x, speed, command):
+        batch_size = x.shape[0]
+
         #######conv layers##############
         x= self.conv1(x)
         x= self.conv1_bn(x)
@@ -147,7 +162,7 @@ class Net(nn.Module):
 
         ###################################
 
-        x = x.view(-1, 25*11*256)      ### do change this
+        x = x.view(-1, 25*11*256)  # TODO: please explain this comment: "do change this"
 
         #########fully connected layers####
         x = self.fc1(x)
@@ -175,24 +190,48 @@ class Net(nn.Module):
         ####################################
         j = torch.cat((x,speed), 1)
         j = self.fc5(j)
-        j= self.fc_drop(j)
+        j = self.fc_drop(j)
         j = F.relu(j)
 
-        ####initiating branches############
-        branch_config = [["Steer", "Gas"],["Steer", "Gas"], ["Steer", "Gas"],["Steer", "Gas"]]
-        ###there were 5 in the code they made, dontn have idea why####
-        branches=[]
-        for i in range(0, len(branch_config)):
-            branch_output = self.fc6(j)
-            branch_output= self.fc_drop(branch_output)
-            branch_output = F.relu(branch_output)
-            branch_output = self.fc7(branch_output)
-            branch_output= self.fc_drop(branch_output)
-            branch_output = F.relu(branch_output)
-            branches.append(self.fc8(branch_output))
-        #have to look for this regarding the dataset , on how to use it?
+        # -------------------- applying branch submodules
 
-        return branches
+        # apply to each branch
+        output = torch.zeros(batch_size,2).to(x.device)
+        branches = list(COMMAND_DICT.keys())
+
+        # branch 1
+        mapping_branch1 = np.where(command == branches[0])
+        branch1 = j[mapping_branch1,:].view(-1,512)
+        branch1 = self.fc6_branch1(branch1)
+        branch1 = self.fc7_branch1(branch1)
+        branch1 = self.fc8_branch1(branch1)
+        output[mapping_branch1, :] = branch1
+
+        # branch 2
+        mapping_branch2 = np.where(command == branches[1])
+        branch2 = j[mapping_branch2,:].view(-1,512)
+        branch2 = self.fc6_branch2(branch2)
+        branch2 = self.fc7_branch2(branch2)
+        branch2 = self.fc8_branch2(branch2)
+        output[mapping_branch2, :] = branch2
+
+        # branch 3
+        mapping_branch3 = np.where(command == branches[2])
+        branch3 = j[mapping_branch3,:].view(-1,512)
+        branch3 = self.fc6_branch3(branch3)
+        branch3 = self.fc7_branch3(branch3)
+        branch3 = self.fc8_branch3(branch3)
+        output[mapping_branch3, :] = branch3
+
+        # branch 4
+        mapping_branch4 = np.where(command == branches[3])
+        branch4 = j[mapping_branch4,:].view(-1,512)
+        branch4 = self.fc6_branch4(branch4)
+        branch4 = self.fc7_branch4(branch4)
+        branch4 = self.fc8_branch4(branch4)
+        output[mapping_branch4, :] = branch4
+
+        return output
 
 def evaluate(model,
              eval_loader,
@@ -209,27 +248,24 @@ def evaluate(model,
 
         for eval_idx, (data, target) in enumerate(eval_loader):
             data, target = data.to(device), target.to(device)
-            output_branches = model(data,
-                                    target[:,target_idx['speed']])
+            output = model(data,
+                           target[:, target_idx['speed']],
+                           target[:, target_idx['command']])
 
             # Calculation of the loss function
-            for c in range(0,len(target[0].shape)):
-                output_target = target[:,[target_idx['steer'],
+            output_target = target[:,[target_idx['steer'],
                                       target_idx['gas']]]
-                current_branch = int(target[c,target_idx['command']] - 2)
-                output = output_branches[current_branch]
 
-                current_loss = loss_function(output.double(),
-                                             output_target.double(),
-                                             weights.double()).item()
-                loss += current_loss
+            current_loss = loss_function(output.double(),
+                                         output_target.double()).item()
+            loss += current_loss
 
-                if progressbar is not None:
-                    eval_bar.update(eval_idx, loss=loss/(eval_idx + 1))
-                else:
-                    print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
-                          end="",
-                          flush=True)
+            if progressbar is not None:
+                eval_bar.update(eval_idx, loss=loss/(eval_idx + 1))
+            else:
+                print("\rEvaluation in progress {:.0f}%/100%".format((eval_idx+1)/len(eval_loader)*100),
+                      end="",
+                      flush=True)
 
     avg_loss = loss/len(eval_loader)
     return avg_loss
@@ -294,7 +330,7 @@ def main():
     weights[1,1] = 0.3  # this is the strange lambda
     weights = weights.to(device)
 
-    loss_function = WeightedMSELoss()
+    loss_function = WeightedMSELoss(weights.to(device))
 
     num_train_epochs = 15
 
@@ -339,29 +375,22 @@ def main():
                # Zero out gradients from previous step
                 optimizer.zero_grad()
                 # Forward pass of the neural net
-                output_branches = model(data,
-                                        target[:,target_idx['speed']])
+                output = model(data,
+                               target[:, target_idx['speed']],
+                               target[:, target_idx['command']])
 
-                # Calculation of the loss function
-                train_loss[batch_idx % eval_rate] = 0
-                for c in range(0,len(target[0].shape)):
-                    output_target = target[:,[target_idx['steer'],
-                                              target_idx['gas']]]
+                output_target = target[:,[target_idx['steer'],
+                                          target_idx['gas']]]
 
-                    # for command = 2 => output = branches[0] ...
-                    current_branch = int(target[c, target_idx['command']] - 2)
-                    output = output_branches[current_branch]
+                loss = loss_function(output.double(),
+                                     output_target.double())
+                # Backward pass (gradient computation)
+                loss.backward()
+                # Adjusting the parameters according to the loss function
+                optimizer.step()
 
-                    loss = loss_function(output.double(),
-                                         output_target.double(),
-                                         weights.double())
-                    # Backward pass (gradient computation)
-                    loss.backward()
-                    # Adjusting the parameters according to the loss function
-                    optimizer.step()
-
-                    # store the training loss
-                    train_loss[batch_idx % eval_rate] += loss.item()
+                # store the training loss
+                train_loss[batch_idx % eval_rate] += loss.item()
 
                 if progressbar is not None:
                     bar.update(batch_idx, loss=np.mean(train_loss[:batch_idx % eval_rate]))
