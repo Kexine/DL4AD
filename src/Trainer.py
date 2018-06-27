@@ -8,6 +8,7 @@ Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 
 # basic python stuff
 import argparse
+import datetime as dt
 import pandas as pd
 import os
 
@@ -59,13 +60,10 @@ def get_output(net_type,
                model,
                data,
                target):
-    if net_type == 'command_input':
+    if net_type == 'command_input' or net_type == 'branched':
         return model(data,
                      target[:, target_idx['speed']],
                      target[:, target_idx['command']])
-    elif net_type == 'branched':
-        return  model(data,
-                      target[:,target_idx['speed']])
     elif net_type == 'command_input_raiscar':
         raise NotImplementedError
     elif net_type == 'branched_raiscar':
