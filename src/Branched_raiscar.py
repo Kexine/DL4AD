@@ -108,6 +108,8 @@ class Net(nn.Module):
 
 
     def forward(self, img, command):
+        batch_size = img.shape[0]
+
         #######conv layers##############
         x= self.conv1(img)
         x= self.conv1_bn(x)

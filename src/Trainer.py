@@ -23,7 +23,7 @@ from customTransforms import *
 from CustomLoss import WeightedMSELoss
 
 import command_input, command_input_raiscar
-import Branched
+import Branched, Branched_raiscar
 
 net_types = ['command_input',
              'branched',
@@ -55,6 +55,8 @@ def load_model(model, model_path):
     else:
         print("No model found, starting training with new model!")
 
+def save_model(model, model_path):
+    torch.save(model.state_dict(), model_path)
 
 def get_output(net_type,
                model,
@@ -64,13 +66,10 @@ def get_output(net_type,
         return model(data,
                      target[:, target_idx['speed']],
                      target[:, target_idx['command']])
-
-    elif net_type == 'command_input_raiscar':
+    elif net_type == 'command_input_raiscar' or net_type == 'branched_raiscar':
         return  model(data,
-                        target[:,target_idx_raiscar['command']])
+                      target[:,target_idx_raiscar['command']])
 
-    elif net_type == 'branched_raiscar':
-        raise NotImplementedError
 
 def evaluate(net_type,
              model,
@@ -165,12 +164,11 @@ def main(net_type,
     elif net_type == 'command_input_raiscar':
         model = command_input_raiscar.Net().to(device)
     elif net_type == 'branched_raiscar':
-        raise NotImplementedError
+        model = Branched_raiscar.Net().to(device)
 
     load_model(model, model_path)
 
     # -------------------- Prepare the optimizer + loss function
-
     # define the weights
     weights = torch.eye(2)
     weights[0,0] = 0.75
