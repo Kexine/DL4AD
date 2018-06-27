@@ -72,20 +72,7 @@ def get_output(net_type,
         raise NotImplementedError
 
 
-def get_target(net_type,
-               target):
-    if net_type == 'command_input':
-        return target[:,[target_idx['steer'],
-                         target_idx['gas']]]
-    elif net_type == 'branched':
-        
-    elif net_type == 'command_input_raiscar':
-        raise NotImplementedError
-    elif net_type == 'branched_raiscar':
-        raise NotImplementedError
-
-
-def evaluate(, net_type,
+def evaluate(net_type,
              model,
              eval_loader,
              loss_function,
