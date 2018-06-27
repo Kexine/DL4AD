@@ -105,11 +105,12 @@ class H5Dataset(Dataset):
         # Queue storing the order of the filehandles in RAM
         self.file_idx_queue = collections.deque()
 
-        if raiscar:
+        self.raiscar = raiscar
+
+        if raiscar==True:
             self.target_idx = target_idx_raiscar
         else:
             self.target_idx = target_idx
-
 
     def _check_corruption(self,file_names):
         crpt_idx = []
@@ -159,8 +160,13 @@ class H5Dataset(Dataset):
         targets = current_file['targets'][idx]
 
         # enhance the acceleration data
+        if self.raiscar==False:
+            targets[self.target_idx['gas']] = targets[self.target_idx['gas']] - targets[self.target_idx['brake']]
 
-        targets[self.target_idx['gas']] = targets[self.target_idx['gas']] - targets[self.target_idx['brake']]
+        else:
+            targets[self.target_idx['steer']] *= -1.0
+            targets[self.target_idx['gas']] = abs(targets[self.target_idx['gas']])
+
 
         if self.transform:
             sample = (self.transform(data),
@@ -233,9 +239,13 @@ def main():
     parser.add_argument("-t", "--train",
                         help="Directory of the train data",
                         default='../data/AgentHuman/SeqTrain')
+    parser.add_argument("-r", "--raiscar",
+                        help="raiscar enable flag",
+                        action="store_true")
     args = parser.parse_args()
 
     traindata_path = args.train
+    raiscar = args.raiscar
 
     # dummy composition for debugging
     composed = transforms.Compose([transforms.ToTensor(),
@@ -256,12 +266,12 @@ def main():
     un_composed = transforms.Compose([transforms.ToTensor()])
 
     train_set = H5Dataset(root_dir = traindata_path,
-                          transform=randomized)
+                          transform=randomized,raiscar=raiscar)
 
     orig_train_set = H5Dataset(root_dir = traindata_path,
-                               transform=un_composed)
+                               transform=un_composed, raiscar=raiscar)
 
-    browser = ImageBrowser(train_set, orig_train_set)
+    browser = ImageBrowser([train_set, orig_train_set],raiscar=raiscar)
     browser.show()
 
 
