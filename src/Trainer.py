@@ -17,11 +17,11 @@ import torch.optim as optim
 from torchvision import transforms
 
 # custom stuff
-from Extractor import H5Dataset, target_idx
+from Extractor import H5Dataset, target_idx, target_idx_raiscar
 from customTransforms import *
 from CustomLoss import WeightedMSELoss
 
-import command_input
+import command_input, command_input_raiscar
 import Branched
 
 net_types = ['command_input',
@@ -67,7 +67,8 @@ def get_output(net_type,
         return  model(data,
                       target[:,target_idx['speed']])
     elif net_type == 'command_input_raiscar':
-        raise NotImplementedError
+        return  model(data,
+                        target[:,target_idx_raiscar['command']])
     elif net_type == 'branched_raiscar':
         raise NotImplementedError
 
@@ -78,22 +79,25 @@ def get_target(net_type,
         return target[:,[target_idx['steer'],
                          target_idx['gas']]]
     elif net_type == 'branched':
-        
-    elif net_type == 'command_input_raiscar':
         raise NotImplementedError
+    elif net_type == 'command_input_raiscar':
+        return target[:,[target_idx_raiscar['steer'],
+                        target_idx_raiscar['gas']]]
+
     elif net_type == 'branched_raiscar':
         raise NotImplementedError
 
 
-def evaluate(, net_type,
+def evaluate(net_type,
              model,
              eval_loader,
              loss_function,
-             weights):
+             weights,
+             device):
     model.eval()
     with torch.no_grad():
         loss = 0
-        model = model.to(device)
+        # model = model.to(device)
 
         if progressbar is not None:
             eval_bar = progressbar.ProgressBar(max_value = len(eval_loader),
@@ -174,7 +178,7 @@ def main(net_type,
     elif net_type == 'branched':
         model = Branched.Net().to(device)
     elif net_type == 'command_input_raiscar':
-        raise NotImplementedError
+        model = command_input_raiscar.Net().to(device)
     elif net_type == 'branched_raiscar':
         raise NotImplementedError
 
@@ -197,12 +201,15 @@ def main(net_type,
     # -------------------- A bit of flavour status
     print(100*"-")
     print("{:<50}".format("Batch Size: " + str(batch_size)), end="")
-    print("{:>50}".format("Eval Rate: " + str(eval_rate)))
+    print("{:>50}".format("Eval Rate: " + str(args.evalrate)))
     print("{:<50}".format(str(len(train_set)) + " Training Samples"), end="")
     print("{:>50}".format(str(len(eval_set)) + " Eval Samples"))
     print("{:<50}".format(str(len(train_loader)) + " Training Batches"), end="")
     print("{:>50}".format(str(len(eval_loader)) + " Eval Batches"))
     print(100*"-", end="\n\n\n")
+
+    # determing evaluation rate
+    eval_rate = int(len(train_loader) / eval_rate)
 
     # -------------------- Start actual training
     for epoch in range(1, amount_epochs + 1):
@@ -248,11 +255,11 @@ def main(net_type,
                     bar.update(batch_idx, loss=train_loss / (amount_trains))
 
                 # -------------------- Evaluate
-                if batch_idx & eval_rate == eval_rate - 1:
+                if batch_idx % eval_rate  == 0 and batch_idx != 0:
                     print("\n\n{:-^100}".format("Evaluation"))
-                    eval_loss = evaluate(model,
+                    eval_loss = evaluate(net_type, model,
                                          eval_loader,
-                                         loss_function, weights)
+                                         loss_function, weights, device)
                     print(("{:-^100}".format("Eval loss: {:.5f}".format(eval_loss))))
 
                     model.train()
@@ -299,7 +306,7 @@ if __name__ == "__main__":
                         help="Directory of the validation data",
                         default='../data/AgentHuman/SeqTrain/val')
     parser.add_argument("-r", "--evalrate",
-                        help="Evaluate every [N] training batches",
+                        help="Evaluate [N] times per epoch",
                         default=263,  # this is basically 10 evals each epoch
                         type=int)
     parser.add_argument("-b", "--batchsize",
@@ -326,7 +333,7 @@ if __name__ == "__main__":
     no_transforms = args.no_transforms
     amount_epochs = args.epochs
 
-    # create the default model path based on 
+    # create the default model path based on
     if model_path is None:
         model_path = dt.datetime.now().strftime("../model/%Y-%m-%d_%H%M{}.pt".format(net_type))
 

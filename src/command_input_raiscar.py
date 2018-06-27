@@ -216,6 +216,7 @@ class Net(nn.Module):
 
         return action
 
+    
 
 def evaluate(model,
              eval_loader,
@@ -310,7 +311,7 @@ def main():
     weights[1,1] = 0.25
     weights = weights.to(device)
 
-    loss_function = WeightedMSELoss()
+    loss_function = WeightedMSELoss(weights)
 
     num_train_epochs = 100
 
