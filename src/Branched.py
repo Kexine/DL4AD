@@ -94,16 +94,22 @@ class Net(nn.Module):
         self.fc4= nn.Linear(128,128)
 
         #4 fc layers for concatenated module
+        # layer before branching
         self.fc5= nn.Linear(640,512)
-        self.fc6= nn.Linear(512,256)
-        self.fc7= nn.Linear(256,256)
 
-        #5 for action output
-        self.fc8= nn.Linear(256,2)
-        self.fc9= nn.Linear(256,1)
+        # submodules for each branch
+        self.fc6_branch1
+        for branch in COMMAND_DICT.keys():
+            self.branch_submodules[branch] = nn.Linear(512, 256)
+
+        # self.fc6= nn.Linear(512,256)
+        # self.fc7= nn.Linear(256,256)
+        # self.fc8= nn.Linear(256,2)
 
 
-    def forward(self, x,speed):
+    def forward(self, x, speed, command):
+        batch_size = x.shape[0]
+
         #######conv layers##############
         x= self.conv1(x)
         x= self.conv1_bn(x)
@@ -147,7 +153,7 @@ class Net(nn.Module):
 
         ###################################
 
-        x = x.view(-1, 25*11*256)      ### do change this
+        x = x.view(-1, 25*11*256)  # TODO: please explain this comment: "do change this"
 
         #########fully connected layers####
         x = self.fc1(x)
@@ -175,13 +181,25 @@ class Net(nn.Module):
         ####################################
         j = torch.cat((x,speed), 1)
         j = self.fc5(j)
-        j= self.fc_drop(j)
+        j = self.fc_drop(j)
         j = F.relu(j)
 
-        ####initiating branches############
-        branch_config = [["Steer", "Gas"],["Steer", "Gas"], ["Steer", "Gas"],["Steer", "Gas"]]
-        ###there were 5 in the code they made, dontn have idea why####
-        branches=[]
+        # -------------------- applying branch submodules
+
+        # apply to each branch
+        command_np = command.cpu().numpy()
+        output = torch.zeros(batch_size)
+        for branch in COMMAND_DICT.keys():
+            command_mapping = np.where(command == branch)
+            branch_output = j[command_mapping,:].view(-1,512)
+
+            branch_output = self.branch_submodules[branch](branch_output)
+
+            # output[command_mapping] =
+            # self.f6_1(branch_input)
+        exit()
+
+
         for i in range(0, len(branch_config)):
             branch_output = self.fc6(j)
             branch_output= self.fc_drop(branch_output)
@@ -210,9 +228,12 @@ def evaluate(model,
         for eval_idx, (data, target) in enumerate(eval_loader):
             data, target = data.to(device), target.to(device)
             output_branches = model(data,
-                                    target[:,target_idx['speed']])
+                                    target[:, target_idx['speed']],
+                                    target[:, target_idx['command']])
 
             # Calculation of the loss function
+            print("len(target[0].shape): {}".len(target[0].shape))
+            exit()
             for c in range(0,len(target[0].shape)):
                 output_target = target[:,[target_idx['steer'],
                                       target_idx['gas']]]
@@ -294,7 +315,7 @@ def main():
     weights[1,1] = 0.3  # this is the strange lambda
     weights = weights.to(device)
 
-    loss_function = WeightedMSELoss()
+    loss_function = WeightedMSELoss(weights.to(device))
 
     num_train_epochs = 15
 
@@ -339,12 +360,12 @@ def main():
                # Zero out gradients from previous step
                 optimizer.zero_grad()
                 # Forward pass of the neural net
-                output_branches = model(data,
-                                        target[:,target_idx['speed']])
+                output_branches = model(data, target[:, target_idx['speed']], target[:, target_idx['command']])
 
                 # Calculation of the loss function
                 train_loss[batch_idx % eval_rate] = 0
                 for c in range(0,len(target[0].shape)):
+                    print("Foobar! {}".format(c))
                     output_target = target[:,[target_idx['steer'],
                                               target_idx['gas']]]
 
@@ -353,8 +374,7 @@ def main():
                     output = output_branches[current_branch]
 
                     loss = loss_function(output.double(),
-                                         output_target.double(),
-                                         weights.double())
+                                         output_target.double())
                     # Backward pass (gradient computation)
                     loss.backward()
                     # Adjusting the parameters according to the loss function
