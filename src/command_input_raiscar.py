@@ -283,7 +283,7 @@ def main():
     model_path = args.model
     traindata_path = args.train
     valdata_path = args.val
-    eval_rate = args.evalrate
+    # eval_rate = args.evalrate
     batch_size = args.batchsize
 
     composed = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
@@ -333,10 +333,14 @@ def main():
     ############### Training
     model.train()
 
+
+    # determing evaluation rate
+    eval_rate = int(len(train_loader) / args.evalrate)
+
     for epoch in range(1, num_train_epochs + 1):
         print("---------------------------------------------------------------")
         print("EPOCH {}".format(epoch))
-        print("Batch Size: {}\t| Eval Rate: {}".format(batch_size, eval_rate))
+        print("Batch Size: {}\t| Eval Rate: {}".format(batch_size, args.evalrate))
         print("{} Training Samples\t| {} Evaluation Samples".format(len(train_set), len(eval_set)))
         print("{} Training Batches\t| {} Evaluation Batches".format(len(train_loader), len(eval_loader)))
         print("---------------------------------------------------------------")
@@ -385,7 +389,7 @@ def main():
                         time.time() - start_time,
                         epoch, batch_idx * len(data), len(train_loader.dataset),
                         100. * batch_idx / len(train_loader), loss.item()))
-                if batch_idx % eval_rate  == eval_rate - 1:
+                if batch_idx % eval_rate  == 0 and batch_idx != 0:
                     # ---------- Validation
                     print("Evaluation ----------------------------------------------------")
                     model.eval()
