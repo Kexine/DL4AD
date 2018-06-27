@@ -23,29 +23,30 @@ Deep Learning for Autonomous Driving - Summer Semester 2018, Freiburg
     - [X] Command Input
     - [X] Branched
     
-- [ ] Cleaning up code
+- [X] Cleaning up code
     - [X] Cleaning up command input
-    - [ ] Cleaning up branched
-    - [ ] Make the data augmentations randomized (like in the paper)
+    - [X] Cleaning up branched
+    - [X] Make the data augmentations randomized (like in the paper)
     
 - [ ] try pooling
     - [ ] max pooling
     - [ ] no pooling
     
-- [ ] Experiments
-    - [ ] Non-Augmented Data
-        - [ ] Command Input
-        - [ ] Branched
-    - [ ] Augmented Data
-        - [ ] Command Input
-        - [ ] Branched
-    - [ ] Non-Conditional Network
-        - [ ] Command Input
-        - [ ] Branched
+- [X] Experiments
+    - [X] Non-Augmented Data
+        - [X] Command Input
+        - [X] Branched
+    - [X] Augmented Data
+        - [X] Command Input
+        - [X] Branched
+    - [X] Non-Conditional Network
+        - [X] Command Input
+        - [X] Branched
 
-- [ ] Report
+- [X] Report
 
 # Exercise 4
+
     - [ ] tune augmentation hyperparameters (difficult without response from the paper authors)
     - [ ] Train
             -[ ] Command Input Raiscar
