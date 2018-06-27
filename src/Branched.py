@@ -53,7 +53,6 @@ warnings.filterwarnings("ignore")
 
 COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight'}
 
-
 class Net(nn.Module):
     branches = []
     def __init__(self):
@@ -118,6 +117,7 @@ class Net(nn.Module):
 
     def forward(self, x, speed, command):
         batch_size = x.shape[0]
+        command = command.to(command.device, dtype=torch.int8)
 
         #######conv layers##############
         x= self.conv1(x)
@@ -200,36 +200,40 @@ class Net(nn.Module):
         branches = list(COMMAND_DICT.keys())
 
         # branch 1
-        mapping_branch1 = np.where(command == branches[0])
-        branch1 = j[mapping_branch1,:].view(-1,512)
-        branch1 = self.fc6_branch1(branch1)
-        branch1 = self.fc7_branch1(branch1)
-        branch1 = self.fc8_branch1(branch1)
-        output[mapping_branch1, :] = branch1
+        mapping_branch1 = np.where(command == branches[0])[0]
+        if mapping_branch1.size > 0:
+            branch1 = j[mapping_branch1,:].view(-1,512)
+            branch1 = self.fc6_branch1(branch1)
+            branch1 = self.fc7_branch1(branch1)
+            branch1 = self.fc8_branch1(branch1)
+            output[mapping_branch1, :] = branch1
 
         # branch 2
-        mapping_branch2 = np.where(command == branches[1])
-        branch2 = j[mapping_branch2,:].view(-1,512)
-        branch2 = self.fc6_branch2(branch2)
-        branch2 = self.fc7_branch2(branch2)
-        branch2 = self.fc8_branch2(branch2)
-        output[mapping_branch2, :] = branch2
+        mapping_branch2 = np.where(command == branches[1])[0]
+        if mapping_branch2.size > 0:
+            branch2 = j[mapping_branch2,:].view(-1,512)
+            branch2 = self.fc6_branch2(branch2)
+            branch2 = self.fc7_branch2(branch2)
+            branch2 = self.fc8_branch2(branch2)
+            output[mapping_branch2, :] = branch2
 
         # branch 3
-        mapping_branch3 = np.where(command == branches[2])
-        branch3 = j[mapping_branch3,:].view(-1,512)
-        branch3 = self.fc6_branch3(branch3)
-        branch3 = self.fc7_branch3(branch3)
-        branch3 = self.fc8_branch3(branch3)
-        output[mapping_branch3, :] = branch3
+        mapping_branch3 = np.where(command == branches[2])[0]
+        if mapping_branch3.size > 0:
+            branch3 = j[mapping_branch3,:].view(-1,512)
+            branch3 = self.fc6_branch3(branch3)
+            branch3 = self.fc7_branch3(branch3)
+            branch3 = self.fc8_branch3(branch3)
+            output[mapping_branch3, :] = branch3
 
         # branch 4
-        mapping_branch4 = np.where(command == branches[3])
-        branch4 = j[mapping_branch4,:].view(-1,512)
-        branch4 = self.fc6_branch4(branch4)
-        branch4 = self.fc7_branch4(branch4)
-        branch4 = self.fc8_branch4(branch4)
-        output[mapping_branch4, :] = branch4
+        mapping_branch4 = np.where(command == branches[3])[0]
+        if mapping_branch4.size > 0:
+            branch4 = j[mapping_branch4,:].view(-1,512)
+            branch4 = self.fc6_branch4(branch4)
+            branch4 = self.fc7_branch4(branch4)
+            branch4 = self.fc8_branch4(branch4)
+            output[mapping_branch4, :] = branch4
 
         return output
 
