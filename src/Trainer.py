@@ -91,7 +91,8 @@ def evaluate(net_type,
 
             output = get_output(net_type, model, data, target)
 
-            output_target = model.extract_output(target)
+            output_target = target[:, [target_idx['steer'],
+                                       target_idx['gas']]]
 
             current_loss = loss_function(output.double(),
                                          output_target.double()).item()
