@@ -139,7 +139,6 @@ def main():
 
     # get amount of files needed to maintain 200 images per h5 fily
     n_files = int(bag.get_message_count('/group_middle_cam/node_middle_cam/image_raw/compressed')/200)
-    print(SHOW_CAM)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -210,12 +209,13 @@ def main():
             if cnt_middle >= 200 or cnt_middle == 0:
                 f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,'middle',file_cnt_m),'w')
                 dset = f_m.create_dataset("rgb", (200,88,200,3), np.uint8)
+                dset = f_m.create_dataset("rgb_original", (640,800,200,3), np.uint8)
                 dset = f_m.create_dataset("targets", (200,3), 'f')
                 cnt_middle = 0
                 file_cnt_m += 1
 
-            image = msg_to_mat(msg)
-            rescaled_image = rescale(image)
+            middle_image_origin = msg_to_mat(msg)
+            rescaled_image = rescale(middle_image_origin)
 
             # save middle cam information
 
@@ -225,6 +225,7 @@ def main():
                 targets_m = np.array([command, analog_steer, analog_gas ])
                 f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
+            f_m["rgb_original"][cnt_middle,...] = middle_image_origin
 
             if SHOW_CAM==True:
                 cv2.putText( image ,'{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
