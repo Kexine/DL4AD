@@ -8,6 +8,8 @@ model/
 *.synctex.gz
 */Report/auto
 Exercise1/
+Exercise2/
+Exercise3/
 *.pt
 model_backups/
 
