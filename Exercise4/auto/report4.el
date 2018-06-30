@@ -32,6 +32,8 @@
     "todonotes"
     "hyperref"
     "listings")
+   (LaTeX-add-labels
+    "fig:augmented_command_loss")
    (LaTeX-add-bibitems
     "imitation"))
  :latex)

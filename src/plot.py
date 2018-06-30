@@ -12,11 +12,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('csvfile',
                         help='path to csv file with training and eval loss')
+    parser.add_argument('-t', '--title',
+                        help='title of the image')
 
     args = parser.parse_args()
 
-
     csv_path = args.csvfile
+    title = args.title
 
     df = pd.read_csv(csv_path,
                      delim_whitespace=True)
@@ -39,9 +41,11 @@ def main():
     plt.figure()
     plt.plot(x_values, df['train_loss'], label='training')
     plt.plot(x_values, df['eval_loss'], label='eval')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
+    plt.xlabel('Epoch', size="14")
+    plt.ylabel('Loss', size="14")
+    plt.legend(prop={'size': 14})
+    plt.title(title, size="14")
+    plt.xlim((0,epoch))
     # plt.savefig('training.png')
 
     plt.show()
