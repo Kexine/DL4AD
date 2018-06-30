@@ -128,8 +128,8 @@ def main(net_type,
     if no_transforms:
         train_transforms = basic_transforms
     else:
-        train_transforms = RandomApplyFromList([ContrastNBrightness(1.5,0.5),
-                                                GaussianBlur(1.5),
+        train_transforms = RandomApplyFromList([ContrastNBrightness(1.1,0.05),
+                                                GaussianBlur(1.3),
                                                 SaltNPepper(0.1),
                                                 GaussianNoise(0, 0.1),
                                                 RegionDropout((10, 10),10)],

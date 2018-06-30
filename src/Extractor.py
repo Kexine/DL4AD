@@ -164,7 +164,7 @@ class H5Dataset(Dataset):
             targets[self.target_idx['gas']] = targets[self.target_idx['gas']] - targets[self.target_idx['brake']]
 
         else:
-            targets[self.target_idx['steer']] *= -1.0
+            targets[self.target_idx['steer']] *= -1.0  # for some reason the steering was inverted
             targets[self.target_idx['gas']] = abs(targets[self.target_idx['gas']])
 
 

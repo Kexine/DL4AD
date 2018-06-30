@@ -2,13 +2,13 @@
 
 import argparse
 # from ImageHandling import ImageBrowser
-from Extractor import H5Dataset, target_idx
+from Extractor import H5Dataset, target_idx, target_idx_raiscar
 import torch
 from torchvision import datasets, transforms
 import numpy as np
 import pandas as pd
 
-import command_input, Branched
+import command_input, Branched, command_input_raiscar, Branched_raiscar
 
 try:
     import progressbar
@@ -16,35 +16,6 @@ except ModuleNotFoundError:
     progressbar = None
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-class BranchedAgent(object):
-    """ An agent for the branched imitation learing stuff."""
-    def __init__(self, model_path, agent_type):
-
-        self.model = Branched.Net().to(device)
-        self.model.load_state_dict(torch.load(model_path))
-        self.model.eval()
-
-    def get_control(self, img, speed, command):
-        with torch.no_grad():
-            # print("high level command: {}".format(int(command.numpy()[0]-2)))
-            # print("all branches with targets: {}".format(self.model(img, speed)))
-            # print("forward pass: {}".format(self.model(img, speed)[int(command.numpy()[0])]))
-            command = int(command.cpu().numpy()[0]) - 2
-            return self.model(img, speed)[command]
-
-
-class CommandInputAgent(object):
-    """ An agent for the imitation learing stuff."""
-    def __init__(self, model_path, agent_type):
-        self.model = command_input.Net().to(device)
-        self.model.load_state_dict(torch.load(model_path))
-        self.model.eval()
-
-    def get_control(self, img, speed, command):
-        with torch.no_grad():
-            return self.model(img, speed, command)
-
 
 if __name__=="__main__":
     # ---------- Argument parsing
@@ -75,10 +46,20 @@ if __name__=="__main__":
 
     print("Loading model...")
     if net_type == 'command_input':
-        agent = CommandInputAgent(model_path, net_type)
+        model = command_input.Net().to(device)
     elif net_type == 'branched':
-        agent = BranchedAgent(model_path, net_type)
-        dummy_test = False
+        model = Branched.Net().to(device)
+    elif net_type == 'command_input_raiscar':
+        model = command_input_raiscar.Net().to(device)
+    elif net_type == 'branched_raiscar':
+        model = Branched_raiscar.Net().to(device)
+    else:
+        print("Please specify one of these models: \
+        command_input|branched|command_input_raiscar|branched_raiscar")
+        exit()
+
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
 
     # arrays for storing predictions and ground truth
     length = len(test_set)
@@ -88,25 +69,29 @@ if __name__=="__main__":
     print("Applying model...")
     if progressbar is not None:
         bar = progressbar.ProgressBar(max_value = len(test_set))
-    for idx, (data, target) in enumerate(test_set):
-        data, target = data.to(device), target.to(device)
-        data.unsqueeze_(0)
-        target.unsqueeze_(0)
+    with torch.no_grad():
+        for idx, (data, target) in enumerate(test_set):
+            data, target = data.to(device), target.to(device)
+            data.unsqueeze_(0)
+            target.unsqueeze_(0)
 
-        speed = target[:,target_idx['speed']]
-        command = target[:,target_idx['command']]
+            if net_type in ['command_input', 'branched']:
+                command = target[:,target_idx['command']]
+                speed = target[:,target_idx['speed']]
+                pred[idx,:] = model(data, speed, command).cpu().numpy()
+            else:
+                command = target[:,target_idx_raiscar['command']]
+                pred[idx:] = model(data, command).cpu().numpy()
 
-        pred[idx,:] = agent.get_control(data, speed, command).cpu().numpy()
+                truth[idx,0] = target[:,target_idx['steer']].cpu().numpy()
+                truth[idx,1] = target[:,target_idx['gas']].cpu().numpy()
 
-        truth[idx,0] = target[:,target_idx['steer']].cpu().numpy()
-        truth[idx,1] = target[:,target_idx['gas']].cpu().numpy()
-
-        if progressbar is not None:
-            bar.update(idx)
+            if progressbar is not None:
+                bar.update(idx)
 
     error = pred - truth
 
-    mse = np.linalg.norm(error, axis=0)
+    mse = np.mean(error ** 2, axis=0)
 
     mean = error.mean(axis=0)
     median = error[int(error.shape[0]/2), :]
