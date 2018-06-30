@@ -209,7 +209,6 @@ def main():
                 f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,'middle',file_cnt_m),'w')
                 dset = f_m.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_m.create_dataset("rgb", (200,88,200,3), np.uint8)
-                dset = f_m.create_dataset("rgb_original", (640,800,200,3), np.uint8)
                 dset = f_m.create_dataset("targets", (200,3), 'f')
                 cnt_middle = 0
                 file_cnt_m += 1
