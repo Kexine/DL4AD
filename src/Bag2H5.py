@@ -209,12 +209,18 @@ def main():
                 f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,'middle',file_cnt_m),'w')
                 dset = f_m.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_m.create_dataset("rgb", (200,88,200,3), np.uint8)
+                dset = f_m.create_dataset("rgb_original", (640,800,200,3), np.uint8)
                 dset = f_m.create_dataset("targets", (200,3), 'f')
                 cnt_middle = 0
                 file_cnt_m += 1
 
+<<<<<<< HEAD
             middle_image_original = msg_to_mat(msg)
             rescaled_image = rescale(middle_image_original)
+=======
+            middle_image_origin = msg_to_mat(msg)
+            rescaled_image = rescale(middle_image_origin)
+>>>>>>> 2c59425c59d0d6d0c96034cc594781458ed8cb8f
 
             # save middle cam information
 
@@ -224,7 +230,11 @@ def main():
                 targets_m = np.array([command, analog_steer, analog_gas ])
                 f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
+<<<<<<< HEAD
             f_m["rgb_original"][cnt_middle,...] = middle_image_original
+=======
+            f_m["rgb_original"][cnt_middle,...] = middle_image_origin
+>>>>>>> 2c59425c59d0d6d0c96034cc594781458ed8cb8f
 
             if SHOW_CAM==True:
                 cv2.putText( middle_image_original ,'{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
