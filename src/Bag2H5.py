@@ -53,7 +53,6 @@ def get_direction_string(command):
 
 
 def get_complementary_cmd(topic, command):
-    print(command)
     if topic=='/group_left_cam/node_left_cam/image_raw/compressed':
         if command == 2 or command == 5: # middle cam is follow lane
             return 4 # set left cam to right
@@ -139,7 +138,6 @@ def main():
 
     # get amount of files needed to maintain 200 images per h5 fily
     n_files = int(bag.get_message_count('/group_middle_cam/node_middle_cam/image_raw/compressed')/200)
-    print(SHOW_CAM)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -209,13 +207,14 @@ def main():
         if topics == '/group_middle_cam/node_middle_cam/image_raw/compressed':
             if cnt_middle >= 200 or cnt_middle == 0:
                 f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,'middle',file_cnt_m),'w')
+                dset = f_m.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_m.create_dataset("rgb", (200,88,200,3), np.uint8)
                 dset = f_m.create_dataset("targets", (200,3), 'f')
                 cnt_middle = 0
                 file_cnt_m += 1
 
-            image = msg_to_mat(msg)
-            rescaled_image = rescale(image)
+            middle_image_original = msg_to_mat(msg)
+            rescaled_image = rescale(middle_image_original)
 
             # save middle cam information
 
@@ -225,12 +224,13 @@ def main():
                 targets_m = np.array([command, analog_steer, analog_gas ])
                 f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
+            f_m["rgb_original"][cnt_middle,...] = middle_image_original
 
             if SHOW_CAM==True:
-                cv2.putText( image ,'{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
+                cv2.putText( middle_image_original ,'{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
                     f_m['targets'][cnt_middle][1],f_m['targets'][cnt_middle][2]),
                     (10,30), font, 0.5,(0,0,255),2)
-                cv2.imshow('pic_m',image)
+                cv2.imshow('pic_m',middle_image_original)
 
             cnt_middle +=1
 
@@ -238,14 +238,14 @@ def main():
         if topics == '/group_right_cam/node_right_cam/image_raw/compressed':
             if cnt_right >= 200 or cnt_right == 0:
                 f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,'right',file_cnt_r),'w')
+                dset = f_r.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_r.create_dataset("rgb", (200,88,200,3), np.uint8)
                 dset = f_r.create_dataset("targets", (200,3), 'f')
                 cnt_right = 0
                 file_cnt_r += 1
 
-            image = msg_to_mat(msg)
-            rescaled_image = rescale(image)
-            print(command)
+            right_image_original = msg_to_mat(msg)
+            rescaled_image = rescale(right_image_original)
             cmp_cmd = get_complementary_cmd(topics, command)
 
             if math.isnan(cmp_cmd):
@@ -254,12 +254,13 @@ def main():
                 targets_r = np.array([cmp_cmd, analog_steer + STEERING_OFFSET, analog_gas ])
                 f_r["targets"][cnt_right] = targets_r
             f_r["rgb"][cnt_right,...] = rescaled_image
+            f_r["rgb_original"][cnt_right, ...] = right_image_original
 
             if SHOW_CAM==True:
-                cv2.putText( image ,'{} {:.8f} {:.8f}'.format(f_r['targets'][cnt_right][0],
+                cv2.putText( right_image_original ,'{} {:.8f} {:.8f}'.format(f_r['targets'][cnt_right][0],
                     f_r['targets'][cnt_right][1],f_r['targets'][cnt_right][2]),
                     (10,30), font, 0.5,(0,0,255),2)
-                cv2.imshow('pic_r',image)
+                cv2.imshow('pic_r',right_image_original)
             cnt_right +=1
 
 
@@ -267,13 +268,14 @@ def main():
         if topics == '/group_left_cam/node_left_cam/image_raw/compressed':
             if cnt_left >= 200 or cnt_left == 0:
                 f_l = h5py.File(left_destination + '{}_{}_{:05d}.h5'.format(location,'left',file_cnt_l),'w')
+                dset = f_l.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_l.create_dataset("rgb", (200,88,200,3), np.uint8)
                 dset = f_l.create_dataset("targets", (200,3), 'f')
                 cnt_left = 0
                 file_cnt_l += 1
 
-            image = msg_to_mat(msg)
-            rescaled_image = rescale(image)
+            left_image_original = msg_to_mat(msg)
+            rescaled_image = rescale(left_image_original)
 
             cmp_cmd = get_complementary_cmd(topics, command)
 
@@ -283,12 +285,13 @@ def main():
                 targets_l = np.array([cmp_cmd, analog_steer - STEERING_OFFSET, analog_gas ])
                 f_l["targets"][cnt_left] = targets_l
             f_l["rgb"][cnt_left,...] = rescaled_image
+            f_l["rgb_original"][cnt_left, ...] = left_image_original
 
             if SHOW_CAM==True:
-                cv2.putText( image ,'{} {:.8f} {:.8f}'.format(f_l['targets'][cnt_left][0],
+                cv2.putText( left_image_original ,'{} {:.8f} {:.8f}'.format(f_l['targets'][cnt_left][0],
                     f_l['targets'][cnt_left][1],f_l['targets'][cnt_left][2]),
                     (10,30), font, 0.5,(0,0,255),2)
-                cv2.imshow('pic_l',image)
+                cv2.imshow('pic_l',left_image_original)
 
             cnt_left +=1
 
@@ -304,36 +307,36 @@ def main():
 
 
     # remove last h5 file if not complete
-    f_m = h5py.File(middle_destination + 'campus_middle_{:05d}.h5'.format(file_cnt_m-1),'r')
+    f_m = h5py.File(middle_destination + '{}_middle_{:05d}.h5'.format(location, file_cnt_m-1),'r')
     if f_m['rgb'][-1].all() == 0:
-        os.remove(middle_destination + 'campus_middle_{:05d}.h5'.format(file_cnt_m-1))
-        os.remove(right_destination + 'campus_right_{:05d}.h5'.format(file_cnt_m-1))
-        os.remove(left_destination + 'campus_left_{:05d}.h5'.format(file_cnt_m-1))
+        os.remove(middle_destination + '{}_middle_{:05d}.h5'.format(location,file_cnt_m-1))
+        os.remove(right_destination + '{}_right_{:05d}.h5'.format(location,file_cnt_m-1))
+        os.remove(left_destination + '{}_left_{:05d}.h5'.format(location,file_cnt_m-1))
         print("removing:\n{}\n{}\n{}".format(
-        'campus_middle_{:05d}.h5'.format(file_cnt_m-1),
-        'campus_right_{:05d}.h5'.format(file_cnt_m-1),
-        'campus_left_{:05d}.h5'.format(file_cnt_m-1)
+        '{}_middle_{:05d}.h5'.format(location,file_cnt_m-1),
+        '{}_right_{:05d}.h5'.format(location,file_cnt_m-1),
+        '{}_left_{:05d}.h5'.format(location,file_cnt_m-1)
         ))
     f_m.close
 
     # show random picture
     file_idx = random.randint(0, int(file_cnt_m-1))
-    f_m = h5py.File(middle_destination + 'campus_middle_{:05d}.h5'.format(file_idx),'r')
-    f_l = h5py.File(left_destination + 'campus_left_{:05d}.h5'.format(file_idx),'r')
-    f_r = h5py.File(right_destination + 'campus_right_{:05d}.h5'.format(file_idx),'r')
+    f_m = h5py.File(middle_destination + '{}_middle_{:05d}.h5'.format(location,file_idx),'r')
+    f_l = h5py.File(left_destination + '{}_left_{:05d}.h5'.format(location,file_idx),'r')
+    f_r = h5py.File(right_destination + '{}_right_{:05d}.h5'.format(location,file_idx),'r')
 
 
     pic_idx =random.randint(0,199)
 
-    m_img = cv2.resize(f_m['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
+    m_img = f_m['rgb_original'][pic_idx]
     cv2.putText( m_img ,'{}'.format(f_m['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
     cv2.imshow('pic_m',m_img)
 
-    r_img = cv2.resize(f_r['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
+    r_img = f_r['rgb_original'][pic_idx]
     cv2.putText( r_img ,'{}'.format(f_r['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
     cv2.imshow('pic_r',r_img)
 
-    l_img = cv2.resize(f_l['rgb'][pic_idx] ,(400, 300), interpolation = cv2.INTER_CUBIC)
+    l_img = f_l['rgb_original'][pic_idx]
     cv2.putText( l_img ,'{}'.format(f_l['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
     cv2.imshow('pic_l',l_img)
 
