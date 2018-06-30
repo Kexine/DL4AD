@@ -83,8 +83,8 @@ if __name__=="__main__":
                 command = target[:,target_idx_raiscar['command']]
                 pred[idx:] = model(data, command).cpu().numpy()
 
-                truth[idx,0] = target[:,target_idx['steer']].cpu().numpy()
-                truth[idx,1] = target[:,target_idx['gas']].cpu().numpy()
+            truth[idx,0] = target[:,target_idx['steer']].cpu().numpy()
+            truth[idx,1] = target[:,target_idx['gas']].cpu().numpy()
 
             if progressbar is not None:
                 bar.update(idx)
