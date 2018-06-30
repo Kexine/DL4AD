@@ -214,13 +214,8 @@ def main():
                 cnt_middle = 0
                 file_cnt_m += 1
 
-<<<<<<< HEAD
             middle_image_original = msg_to_mat(msg)
             rescaled_image = rescale(middle_image_original)
-=======
-            middle_image_origin = msg_to_mat(msg)
-            rescaled_image = rescale(middle_image_origin)
->>>>>>> 2c59425c59d0d6d0c96034cc594781458ed8cb8f
 
             # save middle cam information
 
@@ -230,11 +225,7 @@ def main():
                 targets_m = np.array([command, analog_steer, analog_gas ])
                 f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
-<<<<<<< HEAD
             f_m["rgb_original"][cnt_middle,...] = middle_image_original
-=======
-            f_m["rgb_original"][cnt_middle,...] = middle_image_origin
->>>>>>> 2c59425c59d0d6d0c96034cc594781458ed8cb8f
 
             if SHOW_CAM==True:
                 cv2.putText( middle_image_original ,'{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
