@@ -7,8 +7,10 @@ import torch
 from torchvision import datasets, transforms
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 import command_input, Branched, command_input_raiscar, Branched_raiscar
+import cv2
 
 try:
     import progressbar
@@ -16,6 +18,20 @@ except ModuleNotFoundError:
     progressbar = None
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+def visualize_predictions(image, predictions):
+    # convert BGR to RGB
+    image = image[:, :, [2,1,0]]
+    # plt.imshow(image)
+    # plt.show()
+
+
+
+
+
+
+
+
 
 if __name__=="__main__":
     # ---------- Argument parsing
@@ -42,7 +58,7 @@ if __name__=="__main__":
 
     # ---------- Initialization
     test_set = H5Dataset(root_dir = dataset_path,
-                         transform= transforms.ToTensor())
+                         transform= transforms.ToTensor(), raiscar=True)
 
     print("Loading model...")
     if net_type == 'command_input':
@@ -66,11 +82,17 @@ if __name__=="__main__":
     pred = np.empty((length, 2))
     truth = np.empty((length, 2))
 
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
+
     print("Applying model...")
     if progressbar is not None:
         bar = progressbar.ProgressBar(max_value = len(test_set))
     with torch.no_grad():
-        for idx, (data, target) in enumerate(test_set):
+        for idx, (data, target, orig_image) in enumerate(test_set):
+
+
             data, target = data.to(device), target.to(device)
             data.unsqueeze_(0)
             target.unsqueeze_(0)
@@ -89,8 +111,17 @@ if __name__=="__main__":
                 truth[idx,0] = target[:,target_idx_raiscar['steer']].cpu().numpy()
                 truth[idx,1] = target[:,target_idx_raiscar['gas']].cpu().numpy()
 
+            # visualize_predictions(orig_image, pred)
             if progressbar is not None:
                 bar.update(idx)
+
+            # write original image to video
+            out.write(orig_image)
+
+    # release videowriter
+    out.release()
+
+    cv2.destroyAllWindows()
 
     error = pred - truth
 
