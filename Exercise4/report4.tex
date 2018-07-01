@@ -55,13 +55,28 @@ One big issue was that the meaning of the braking information was quite cryptic
 and after asking the original paper authors of \cite{imitation}, it turned out
 that the braking and acceleration data was supposed to be fused into one
 variable. After this was done, the networks trained properly, as can be seen in
-the loss plots.  % TODO: insert plots
+the loss plots (figures \ref{fig:augmented_command_loss}.
+\ref{fig:augmented_branched_loss}, \ref{fig:unaugmented_branched_loss}).
 
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.95\textwidth]{figures/sim_command_input_aug_lossplot}
   \label{fig:augmented_command_loss}
   \caption{Simulation command input lossplot}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/sim_branched_aug_lossplot}
+  \label{fig:augmented_branched_loss}
+  \caption{Simulation branched lossplot}
+\end{figure}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/sim_branched_nonaug_lossplot}
+  \label{fig:unaugmented_branched_loss}
+  \caption{Simulation branched, unaugmented lossplot}
 \end{figure}
 	
 \begin{thebibliography}{9}

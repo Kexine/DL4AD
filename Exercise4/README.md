@@ -13,11 +13,11 @@
     - [ ] Branched
         - [ ] Augmented
             - [x] Train
-            - [ ] Loss-Plot
+            - [X] Loss-Plot
             - [ ] Steering error
         - [ ] Non-Augmented
             - [x] Train
-            - [ ] Loss-Plot
+            - [X] Loss-Plot
             - [ ] Steering error
         
 - [ ] rAIScar stuff
