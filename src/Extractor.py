@@ -167,13 +167,24 @@ class H5Dataset(Dataset):
             targets[self.target_idx['steer']] *= -1.0  # for some reason the steering was inverted
             targets[self.target_idx['gas']] = abs(targets[self.target_idx['gas']])
 
+            # also: if in raiscar mode, extract original sized image
+            orig_image = current_file['rgb_original'][idx]
 
+
+        # when in raiscar mode, return also original image
         if self.transform:
             sample = (self.transform(data),
                       torch.Tensor(targets))
+            if self.raiscar:
+                sample = (self.transform(data), torch.Tensor(targets), orig_image)
         else:
             sample = (data,
                       targets)
+            if self.raiscar:
+                sample = (data, targets, orig_image)
+                print(sample)
+
+
 
         return sample
 
