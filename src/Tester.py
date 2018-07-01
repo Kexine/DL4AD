@@ -173,6 +173,7 @@ if __name__=="__main__":
             # write original image to video
             out.write(orig_image)
 
+    
 
 
     truth_prime = truth - np.mean(truth, axis=0)
@@ -183,6 +184,7 @@ if __name__=="__main__":
 
     cv2.destroyAllWindows()
 
+>>>>>>> 4be4f96889a12ab553ecf7a94533c643f60e751d
     error = pred - truth
 
     mse = np.mean(error ** 2, axis=0)
