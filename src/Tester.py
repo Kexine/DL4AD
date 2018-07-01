@@ -173,6 +173,11 @@ if __name__=="__main__":
             # write original image to video
             out.write(orig_image)
 
+
+
+    truth_prime = truth - np.mean(truth, axis=0)
+    # truth_prime[np.where(truth == 0)] = np.finfo(float).eps
+
     # release videowriter
     out.release()
 
@@ -186,7 +191,10 @@ if __name__=="__main__":
     median = error[int(error.shape[0]/2), :]
 
     # calculate R-squared error
-    R_squared = np.ones(truth.shape[1]) - (mse / np.linalg.norm(truth,axis=0))
+    non_zero_indices = np.where(truth != 0)
+    R_squared = np.ones(truth.shape[1]) - np.mean(error[np.where(truth != 0)]**2 / truth[np.where(truth!=0)]**2)
+
+    print("truth norm: {}".format(np.mean(truth_prime**2, axis=0)))
 
     print("R²: {}".format(R_squared))
 
