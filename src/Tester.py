@@ -19,16 +19,57 @@ except ModuleNotFoundError:
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def visualize_predictions(image, predictions):
-    # convert BGR to RGB
-    image = image[:, :, [2,1,0]]
-    # plt.imshow(image)
-    # plt.show()
+
+def renderGas(img,
+              gas,
+              pos,  # this is a x,y-tuple!
+              max_height = 150,
+              width = 20):
+    # helper variable to see the middle of the bounding rectangle
+    middle_y = pos[1] - int(max_height / 2)
+
+    # draw the rectangle containing the gas value
+    pt1 = pos
+    pt2 = (pos[0] + width,
+           pos[1] - max_height)
+    cv2.rectangle(img, pt1, pt2, (0xFF, 0xFF, 0xFF), 1)
+
+    # draw the gas rectangle inside the other one
+    if gas > 0:
+        clr = (0, 0, 0xFF)
+    else:
+        clr = (0xFF, 0, 0)
+
+    pt1 = (pos[0] + 2,
+           middle_y)
+    pt2 = (pos[0] + width - 2,
+           middle_y - int(gas * max_height / 2))
+    cv2.rectangle(img, pt1, pt2, clr, -1)
+
+    # additional line to see where gas is 0 0
+    cv2.line(img,
+             (pos[0] - 3, middle_y),
+             (pos[0] + width + 3, middle_y),
+             (0xFF, 0xFF, 0xFF))
 
 
+def renderSteering(orig_image, raw_value,color):
+    steering_overlay = cv2.imread('steering_wheel.png', cv2.IMREAD_UNCHANGED)
+    cv2.circle(orig_image,(320,480), 63, (0,0,255), 5)
+
+    # TODO: map [-1,+1] joystick output to radian [-pi, +pi]
+    # negative is left, positive Right
+    # raw_value = -1.0
+    rad = (raw_value - (-1)) * ( (np.pi - (-np.pi) ) / (1 - (-1)) ) + (-np.pi)
+
+    dx = (np.cos(rad - np.pi/2)) * 65
+    dy = (np.sin(rad - np.pi/2)) * 65
 
 
+    # print("old vlaue {}, new value {}".format(raw_value, rad))
+    # print("dx {}, dy {}".format(dx,dy))
 
+    cv2.arrowedLine(orig_image, (320,240), (320+int(dx),240+int(dy)), color,5)
 
 
 
@@ -114,6 +155,20 @@ if __name__=="__main__":
             # visualize_predictions(orig_image, pred)
             if progressbar is not None:
                 bar.update(idx)
+
+
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(orig_image,"Human", (15,470),font ,0.5,(0,0,255),2)
+            cv2.putText(orig_image,"Agent", (575,470),font ,0.5,(0,0,255),2)
+
+            renderGas(orig_image, truth[idx][1], (20,450))
+            renderGas(orig_image, pred[idx][1], (580,450))
+
+            # render_steering_wheel(orig_image)
+            # cv2.putText(orig_image,"{}".format(truth[idx,0]), (100,100),font ,0.5,(0,0,255),2)
+
+            # renderSteering(orig_image, truth[idx,0], color=(0,0,255))
+            renderSteering(orig_image, pred[idx,0], color=(0,255,0))
 
             # write original image to video
             out.write(orig_image)
