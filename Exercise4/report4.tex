@@ -48,37 +48,83 @@ to the platform. This included:
 TODO
 
 \section{Leftover tasks from Exercise 3}
-
 \subsection{Issues}
 There were several issues to overcome which weren't completely solved in time.
 One big issue was that the meaning of the braking information was quite cryptic
 and after asking the original paper authors of \cite{imitation}, it turned out
 that the braking and acceleration data was supposed to be fused into one
 variable. After this was done, the networks trained properly, as can be seen in
-the loss plots (figures \ref{fig:augmented_command_loss}.
+the loss plots (figures \ref{fig:augmented_command_loss}, \ref{fig:unaugmented_command_loss},
 \ref{fig:augmented_branched_loss}, \ref{fig:unaugmented_branched_loss}).
 
+The errors for the test set are shown in tables \ref{tab:error_command_aug} and \ref{tab:error_command_nonaug}.% TODO
+\begin{table}[H]
+  \centering
+  \caption{Error values for the simulated command input net}
+  \begin{tabular}{lccc|ccc}
+    &\multicolumn{3}{c|}{Augmented} & \multicolumn{3}{c}{unaugmented} \\
+    & MSE & (Median error)$^2$ & $R^2$-value & MSE & (Median error)$^2$ & $R^2$-value\\ \hline
+    Steer & NaN & NaN & NaN & NaN & NaN & NaN \\
+    Gas & NaN & NaN & NaN & NaN & NaN & NaN
+  \end{tabular}
+  \label{tab:error_command_aug}
+\end{table}
+\begin{table}[H]
+  \centering
+  \caption{Error values for the simulated branched net}
+  \begin{tabular}{lccc|ccc}
+    &\multicolumn{3}{c|}{Augmented} & \multicolumn{3}{c}{unaugmented} \\
+    & MSE & (Median error)$^2$ & $R^2$-value & MSE & (Median error)$^2$ & $R^2$-value\\ \hline
+    Steer & NaN & NaN & NaN & NaN & NaN & NaN \\
+    Gas & NaN & NaN & NaN & NaN & NaN & NaN
+  \end{tabular}
+  \label{tab:error_command_nonaug}
+\end{table}
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.95\textwidth]{figures/sim_command_input_aug_lossplot}
   \label{fig:augmented_command_loss}
   \caption{Simulation command input lossplot}
 \end{figure}
-
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/sim_command_input_nonaug_lossplot}
+  \label{fig:unaugmented_command_loss}
+  \caption{Simulation command input, unaugmented lossplot}
+\end{figure}
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.95\textwidth]{figures/sim_branched_aug_lossplot}
   \label{fig:augmented_branched_loss}
   \caption{Simulation branched lossplot}
 \end{figure}
-
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.95\textwidth]{figures/sim_branched_nonaug_lossplot}
   \label{fig:unaugmented_branched_loss}
   \caption{Simulation branched, unaugmented lossplot}
 \end{figure}
-	
+
+\newpage{}
+\section{Results for the Klinikum run}
+For our rAIScar dataset, we went to the klinikum Freiburg, because the roads
+there are narrow enough and there aren't too many bystanders which would disturb
+the network.
+
+For training, we wrote a python script, converting the rosbag files from the run
+into h5 datasets in the form of the simulation.
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/klinikum_command_input_aug_lossplot}
+  \label{fig:klinikum_augmented_command_loss}
+  \caption{Klinikum rAIScar command input lossplot}
+\end{figure}
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/klinikum_command_input_nonaug_lossplot}
+  \label{fig:klinikum_unaugmented_command_loss}
+  \caption{Klinikum rAIScar command input, unaugmented lossplot}
+\end{figure}
 \begin{thebibliography}{9}
 \bibitem{imitation}
 Codevilla, Felipe and Müller, Matthias and López, Antonio and Koltun, Vladlen
@@ -86,5 +132,4 @@ and Dosovitskiy, Alexey.
 \textit{End-to-end Driving via Conditional Imitation Learning.}
 ICRA 2018
 \end{thebibliography}
-
 \end{document}
