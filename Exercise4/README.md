@@ -7,7 +7,7 @@
             - [ ] Loss-Plot
             - [ ] Steering error
         - [ ] Non-Augmented
-            - [ ] Train
+            - [x] Train
             - [ ] Loss-Plot
             - [ ] Steering error
     - [ ] Branched
@@ -23,7 +23,7 @@
 - [ ] rAIScar stuff
     - [ ] Command input
         - [ ] Augmented
-            - [x] Train
+            - [ ] Train
             - [ ] Loss-Plot
             - [ ] Steering error
         - [ ] Non-Augmented
@@ -33,11 +33,11 @@
 
     - [ ] Branched
         - [ ] Augmented
-            - [x] Train
+            - [ ] Train
             - [ ] Loss-Plot
             - [ ] Steering error
         - [ ] Non-Augmented
-            - [x] Train
+            - [ ] Train
             - [ ] Loss-Plot
             - [ ] Steering error
 

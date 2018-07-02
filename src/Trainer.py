@@ -91,8 +91,12 @@ def evaluate(net_type,
 
             output = get_output(net_type, model, data, target)
 
-            output_target = target[:, [target_idx['steer'],
-                                       target_idx['gas']]]
+            if net_type == 'command_input' or net_type == 'branched':
+                output_target = target[:, [target_idx['steer'],
+                                           target_idx['gas']]]
+            else:
+                output_target = target[:, [target_idx_raiscar['steer'],
+                                           target_idx_raiscar['gas']]]
 
             current_loss = loss_function(output.double(),
                                          output_target.double()).item()
@@ -217,8 +221,12 @@ def main(net_type,
                 output = get_output(net_type, model, data, target)
 
                 # Get the target outputs that we're training on
-                output_target = target[:,[target_idx['steer'],
-                                          target_idx['gas']]]
+                if net_type == 'command_input' or net_type == 'branched':
+                    output_target = target[:,[target_idx['steer'],
+                                              target_idx['gas']]]
+                else:
+                    output_target = target[:,[target_idx_raiscar['steer'],
+                                              target_idx_raiscar['gas']]]
 
                 loss = loss_function(output,
                                      output_target)  # DONE: weights are now in the initializer
