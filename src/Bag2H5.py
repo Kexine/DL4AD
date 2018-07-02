@@ -188,7 +188,7 @@ def main():
             current_buttons = msg
 
             l1_pressed = current_buttons.buttons[BTN_L1] == 1
-            r1_pressed = current_buttons.buttons[BTN_L2] == 1
+            r1_pressed = current_buttons.buttons[BTN_R1] == 1
 
             if l1_pressed and r1_pressed:
                 command = CMD_STRAIGHT
@@ -231,6 +231,7 @@ def main():
                 cnt_middle = 0
                 file_cnt_m += 1
 
+            middle_image_original = msg_to_mat(msg)
             rescaled_image = rescale(middle_image_original)
 
             # save middle cam information
