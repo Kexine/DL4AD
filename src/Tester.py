@@ -53,7 +53,7 @@ def renderGas(img,
              (0xFF, 0xFF, 0xFF))
 
 
-def renderSteering(orig_image, raw_value,color):
+def renderSteering(orig_image, raw_value,color, pos):
     steering_overlay = cv2.imread('steering_wheel.png', cv2.IMREAD_UNCHANGED)
     cv2.circle(orig_image,(320,480), 63, (0,0,255), 5)
 
@@ -62,6 +62,8 @@ def renderSteering(orig_image, raw_value,color):
     # raw_value = -1.0
     rad = (raw_value - (-1)) * ( (np.pi - (-np.pi) ) / (1 - (-1)) ) + (-np.pi)
 
+
+    x, y = pos
     dx = (np.cos(rad - np.pi/2)) * 65
     dy = (np.sin(rad - np.pi/2)) * 65
 
@@ -69,7 +71,7 @@ def renderSteering(orig_image, raw_value,color):
     # print("old vlaue {}, new value {}".format(raw_value, rad))
     # print("dx {}, dy {}".format(dx,dy))
 
-    cv2.arrowedLine(orig_image, (320,240), (320+int(dx),240+int(dy)), color,5)
+    cv2.arrowedLine(orig_image, (x,y), (x+int(dx),y+int(dy)), color,5)
 
 
 
@@ -167,13 +169,13 @@ if __name__=="__main__":
             # render_steering_wheel(orig_image)
             # cv2.putText(orig_image,"{}".format(truth[idx,0]), (100,100),font ,0.5,(0,0,255),2)
 
-            # renderSteering(orig_image, truth[idx,0], color=(0,0,255))
-            renderSteering(orig_image, pred[idx,0], color=(0,255,0))
+            renderSteering(orig_image, truth[idx,0], color=(0,0,255), pos=(320,480))
+            renderSteering(orig_image, pred[idx,0], color=(0,255,0), pos = (320,480))
 
             # write original image to video
             out.write(orig_image)
 
-    
+
 
 
     truth_prime = truth - np.mean(truth, axis=0)
@@ -184,7 +186,6 @@ if __name__=="__main__":
 
     cv2.destroyAllWindows()
 
->>>>>>> 4be4f96889a12ab553ecf7a94533c643f60e751d
     error = pred - truth
 
     mse = np.mean(error ** 2, axis=0)
