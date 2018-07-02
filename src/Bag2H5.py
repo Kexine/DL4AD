@@ -120,12 +120,17 @@ def main():
                         help="set to True or False, shows camera input",
                         action='store_true')
 
+    parser.add_argument("-e", "--enableTestBag",
+                        help="Set to true to also store the original image files",
+                        action='store_true')
+
     args = parser.parse_args()
     destination = args.destination
     location = args.location
     bag_path = args.bag
     offset = float(args.offset)
     SHOW_CAM = args.show
+    ENABLE_TEST_BAG = args.enableTestBag
 
     STEERING_OFFSET = 0.45
 
@@ -204,10 +209,22 @@ def main():
 
 
 
-        if topics == '/group_middle_cam/node_middle_cam/image_raw/compressed':
+        '''
+        When we recorded the old graveyard dataset, the middle and right camera
+        where switchted, so I switch them here too, but only in the topics string
+        old order:                  new order:
+        1. middle                   1. right
+        2. right                    2. middle
+        3. left                     3. left
+
+        '''
+
+
+        if topics == '/group_right_cam/node_right_cam/image_raw/compressed':
             if cnt_middle >= 200 or cnt_middle == 0:
                 f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,'middle',file_cnt_m),'w')
-                dset = f_m.create_dataset("rgb_original", (200,480,640,3), np.uint8)
+                if ENABLE_TEST_BAG:
+                    dset = f_m.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_m.create_dataset("rgb", (200,88,200,3), np.uint8)
                 dset = f_m.create_dataset("targets", (200,3), 'f')
                 cnt_middle = 0
@@ -224,7 +241,8 @@ def main():
                 targets_m = np.array([command, analog_steer, analog_gas ])
                 f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
-            f_m["rgb_original"][cnt_middle,...] = middle_image_original
+            if ENABLE_TEST_BAG:
+                f_m["rgb_original"][cnt_middle,...] = middle_image_original
 
             if SHOW_CAM==True:
                 cv2.putText( middle_image_original ,'{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
@@ -235,10 +253,11 @@ def main():
             cnt_middle +=1
 
 
-        if topics == '/group_right_cam/node_right_cam/image_raw/compressed':
+        if topics == '/group_middle_cam/node_middle_cam/image_raw/compressed':
             if cnt_right >= 200 or cnt_right == 0:
                 f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,'right',file_cnt_r),'w')
-                dset = f_r.create_dataset("rgb_original", (200,480,640,3), np.uint8)
+                if ENABLE_TEST_BAG:
+                    dset = f_r.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_r.create_dataset("rgb", (200,88,200,3), np.uint8)
                 dset = f_r.create_dataset("targets", (200,3), 'f')
                 cnt_right = 0
@@ -254,7 +273,8 @@ def main():
                 targets_r = np.array([cmp_cmd, analog_steer + STEERING_OFFSET, analog_gas ])
                 f_r["targets"][cnt_right] = targets_r
             f_r["rgb"][cnt_right,...] = rescaled_image
-            f_r["rgb_original"][cnt_right, ...] = right_image_original
+            if ENABLE_TEST_BAG:
+                f_r["rgb_original"][cnt_right, ...] = right_image_original
 
             if SHOW_CAM==True:
                 cv2.putText( right_image_original ,'{} {:.8f} {:.8f}'.format(f_r['targets'][cnt_right][0],
@@ -268,7 +288,8 @@ def main():
         if topics == '/group_left_cam/node_left_cam/image_raw/compressed':
             if cnt_left >= 200 or cnt_left == 0:
                 f_l = h5py.File(left_destination + '{}_{}_{:05d}.h5'.format(location,'left',file_cnt_l),'w')
-                dset = f_l.create_dataset("rgb_original", (200,480,640,3), np.uint8)
+                if ENABLE_TEST_BAG:
+                    dset = f_l.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_l.create_dataset("rgb", (200,88,200,3), np.uint8)
                 dset = f_l.create_dataset("targets", (200,3), 'f')
                 cnt_left = 0
@@ -285,7 +306,8 @@ def main():
                 targets_l = np.array([cmp_cmd, analog_steer - STEERING_OFFSET, analog_gas ])
                 f_l["targets"][cnt_left] = targets_l
             f_l["rgb"][cnt_left,...] = rescaled_image
-            f_l["rgb_original"][cnt_left, ...] = left_image_original
+            if ENABLE_TEST_BAG:
+                f_l["rgb_original"][cnt_left, ...] = left_image_original
 
             if SHOW_CAM==True:
                 cv2.putText( left_image_original ,'{} {:.8f} {:.8f}'.format(f_l['targets'][cnt_left][0],
@@ -319,29 +341,29 @@ def main():
         ))
     f_m.close
 
-    # show random picture
-    file_idx = random.randint(0, int(file_cnt_m-1))
-    f_m = h5py.File(middle_destination + '{}_middle_{:05d}.h5'.format(location,file_idx),'r')
-    f_l = h5py.File(left_destination + '{}_left_{:05d}.h5'.format(location,file_idx),'r')
-    f_r = h5py.File(right_destination + '{}_right_{:05d}.h5'.format(location,file_idx),'r')
-
-
-    pic_idx =random.randint(0,199)
-
-    m_img = f_m['rgb_original'][pic_idx]
-    cv2.putText( m_img ,'{}'.format(f_m['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
-    cv2.imshow('pic_m',m_img)
-
-    r_img = f_r['rgb_original'][pic_idx]
-    cv2.putText( r_img ,'{}'.format(f_r['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
-    cv2.imshow('pic_r',r_img)
-
-    l_img = f_l['rgb_original'][pic_idx]
-    cv2.putText( l_img ,'{}'.format(f_l['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
-    cv2.imshow('pic_l',l_img)
-
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # # show random picture
+    # file_idx = random.randint(0, int(file_cnt_m-1))
+    # f_m = h5py.File(middle_destination + '{}_middle_{:05d}.h5'.format(location,file_idx),'r')
+    # f_l = h5py.File(left_destination + '{}_left_{:05d}.h5'.format(location,file_idx),'r')
+    # f_r = h5py.File(right_destination + '{}_right_{:05d}.h5'.format(location,file_idx),'r')
+    #
+    #
+    # pic_idx =random.randint(0,199)
+    #
+    # m_img = f_m['rgb_original'][pic_idx]
+    # cv2.putText( m_img ,'{}'.format(f_m['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
+    # cv2.imshow('pic_m',m_img)
+    #
+    # r_img = f_r['rgb_original'][pic_idx]
+    # cv2.putText( r_img ,'{}'.format(f_r['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
+    # cv2.imshow('pic_r',r_img)
+    #
+    # l_img = f_l['rgb_original'][pic_idx]
+    # cv2.putText( l_img ,'{}'.format(f_l['targets'][pic_idx]) ,(10,30), font, 0.5,(0,0,255),2)
+    # cv2.imshow('pic_l',l_img)
+    #
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     bag.close()
 
 
