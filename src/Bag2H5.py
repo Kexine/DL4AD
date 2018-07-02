@@ -18,6 +18,20 @@ import progressbar
 import random
 import math
 
+CMD_FOLLOW = 2
+CMD_LEFT = 3
+CMD_RIGHT = 4
+CMD_STRAIGHT = 5
+
+BTN_L1 = 4
+BTN_R1 = 5
+AXIS_LEFT_STICK = 0
+AXIS_RIGHT_STICK = 3
+
+LEFT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
+MIDDLE_CAM_TOPIC = '/group_right_cam/node_right_cam/image_raw/compressed'
+RIGHT_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
+
 def msg_to_mat(msg, debayer=False):
 
     np_img = np.fromstring(msg.data, dtype=np.uint8)
@@ -35,39 +49,37 @@ def rescale(cv2image, height=88, width=200):
     rescaled = cv2.resize(cv2image ,(width, height), interpolation = cv2.INTER_CUBIC)
     return rescaled
 
-
 def get_direction_string(command):
-        if command == 3:
+        if command == CMD_LEFT:
             return 'Left'
-        if command == 4:
+        if command == CMD_RIGHT:
             return 'Right'
         '''
         actual command for straight is 5, but 2 is also interpreted as Straight
         since in the phyisical system no follow lane command is used
         '''
-        if command == 5 or command==2:
+        if command == CMD_STRAIGHT or command==2:
             return 'Straight'
-        # if command == 2:
+        # if command == CMD_FOLLOW:
         #     return 'Follow Lane'
 
 
-
 def get_complementary_cmd(topic, command):
-    if topic=='/group_left_cam/node_left_cam/image_raw/compressed':
-        if command == 2 or command == 5: # middle cam is follow lane
-            return 4 # set left cam to right
-        if command == 4: # middle cam is right
-            return 4 # set left cam to right
-        if command == 3: # middle cam is left
-            return 3 # set left cam to left
+    if topic==LEFT_CAM_TOPIC:
+        if command == CMD_FOLLOW or command == CMD_STRAIGHT: # middle cam is follow lane
+            return CMD_RIGHT # set left cam to right
+        if command == CMD_RIGHT: # middle cam is right
+            return CMD_RIGHT # set left cam to right
+        if command == CMD_LEFT: # middle cam is left
+            return CMD_LEFT # set left cam to left
 
-    if topic=='/group_right_cam/node_right_cam/image_raw/compressed':
-        if command == 2 or command == 5: # middle cam is follow lane
-            return 3 # set left cam to right
-        if command == 4: # middle cam is right
-            return 4 # set left cam to right
-        if command == 3: # middle cam is left
-            return 3 # set left cam to left
+    if topic==RIGHT_CAM_TOPIC:
+        if command == CMD_FOLLOW or command == CMD_STRAIGHT: # middle cam is follow lane
+            return CMD_LEFT # set left cam to right
+        if command == CMD_RIGHT: # middle cam is right
+            return CMD_RIGHT # set left cam to right
+        if command == CMD_LEFT: # middle cam is left
+            return CMD_LEFT # set left cam to left
 
     return float('nan')
 
@@ -75,7 +87,6 @@ def get_complementary_cmd(topic, command):
 
 
 def make_dirs(destination):
-
     middle_destination = destination + 'middle/'
     right_destination = destination + 'right/'
     left_destination = destination + 'left/'
@@ -92,14 +103,11 @@ def make_dirs(destination):
         print("Creating directory..." )
         os.mkdir(right_destination)
 
-
     if not os.path.isdir(left_destination):
         print("Creating directory..." )
         os.mkdir(left_destination)
 
-
     return middle_destination, right_destination, left_destination
-
 
 
 def main():
@@ -134,18 +142,15 @@ def main():
 
     STEERING_OFFSET = 0.45
 
-
-
     # create directories and return paths
     middle_destination, right_destination, left_destination = make_dirs(destination)
 
     bag = rosbag.Bag(bag_path, 'r' )
 
     # get amount of files needed to maintain 200 images per h5 fily
-    n_files = int(bag.get_message_count('/group_middle_cam/node_middle_cam/image_raw/compressed')/200)
+    n_files = int(bag.get_message_count(RIGHT_CAM_TOPIC)/200)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
-
 
     '''
     bag_topics[0] -> right cam
@@ -154,13 +159,16 @@ def main():
     bag_topics[3] -> middle cam
     '''
 
+    # initialize to going straight
     current_buttons = None
-    command = float('nan')
+    command = CMD_STRAIGHT
     cmp_cmd = float('nan')
+    analog_steer = 0.0
+    analog_gas = 0.0
 
     start_time = rospy.Time(bag.get_start_time() + offset) # t.secs=10
 
-    COMMAND_DICT =  {2: 'Follow Lane', 3: 'Left', 4: 'Right', 5: 'Straight', None: None}
+    COMMAND_DICT =  {CMD_FOLLOW: 'Follow Lane', CMD_LEFT: 'Left', CMD_RIGHT: 'Right', CMD_STRAIGHT: 'Straight', None: None}
     cnt_middle = 0
     cnt_right = 0
     cnt_left = 0
@@ -169,12 +177,7 @@ def main():
     file_cnt_r = 0
     file_cnt_l = 0
 
-    widgets = [ progressbar.widgets.Bar(),
-           ' ', progressbar.widgets.Timer(),
-           ' ', progressbar.widgets.AdaptiveETA(),
-           ' ']
-    bar = progressbar.ProgressBar(max_value = bag.get_message_count(),
-                              widgets = widgets)
+    bar = progressbar.ProgressBar(max_value = bag.get_message_count())
 
     for idx, (topics, msg, t) in enumerate(bag.read_messages(start_time=start_time)):
         if topics=='/joy':
@@ -184,30 +187,27 @@ def main():
             '''
             current_buttons = msg
 
-            if current_buttons.buttons[4] == 1:
-                command = 3
-                dir_string = COMMAND_DICT[command]
-            else:
-                if current_buttons.buttons[5] == 1:
-                    command = 4
-                    dir_string = COMMAND_DICT[command]
+            l1_pressed = current_buttons.buttons[BTN_L1] == 1
+            r1_pressed = current_buttons.buttons[BTN_L2] == 1
 
-                else:
-                    if current_buttons.buttons[5] == 1 and current_buttons.buttons[4] == 1:
-                        command = 5
-                        dir_string = COMMAND_DICT[command]
-                    else:
-                        command = 5
-                        dir_string = COMMAND_DICT[command]
+            if l1_pressed and r1_pressed:
+                command = CMD_STRAIGHT
+
+            elif l1_pressed:
+                command = CMD_LEFT
+            elif r1_pressed:
+                command = CMD_RIGHT
+            else:
+                command = CMD_STRAIGHT  # this used to be follow lane but we currently don't use that
+
+            dir_string = COMMAND_DICT[command]
 
             # turning left is positive, turning right is negative
-            analog_steer = current_buttons.axes[0]
+            analog_steer = current_buttons.axes[AXIS_LEFT_STICK]
             # left_stick_up_down = current_buttons.axes[1]
 
             # right_stick_left_right =  current_buttons.axes[2]
-            analog_gas =  current_buttons.axes[3]
-
-
+            analog_gas =  current_buttons.axes[AXIS_RIGHT_STICK]
 
         '''
         When we recorded the old graveyard dataset, the middle and right camera
@@ -216,13 +216,14 @@ def main():
         1. middle                   1. right
         2. right                    2. middle
         3. left                     3. left
-
         '''
 
-
-        if topics == '/group_right_cam/node_right_cam/image_raw/compressed':
+        if topics == MIDDLE_CAM_TOPIC:
             if cnt_middle >= 200 or cnt_middle == 0:
-                f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,'middle',file_cnt_m),'w')
+                f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,
+                                                                              'middle',
+                                                                              file_cnt_m),
+                                'w')
                 if ENABLE_TEST_BAG:
                     dset = f_m.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_m.create_dataset("rgb", (200,88,200,3), np.uint8)
@@ -230,7 +231,6 @@ def main():
                 cnt_middle = 0
                 file_cnt_m += 1
 
-            middle_image_original = msg_to_mat(msg)
             rescaled_image = rescale(middle_image_original)
 
             # save middle cam information
@@ -238,24 +238,30 @@ def main():
             if math.isnan(command):
                 f_m["targets"][cnt_middle] = float('nan')
             else:
-                targets_m = np.array([command, analog_steer, analog_gas ])
+                targets_m = np.array([command,
+                                      analog_steer,
+                                      analog_gas])
                 f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
             if ENABLE_TEST_BAG:
-                f_m["rgb_original"][cnt_middle,...] = middle_image_original
+                f_m["rgb_original"][cnt_middle,...] = msg_to_mat(msg)
 
             if SHOW_CAM==True:
-                cv2.putText( middle_image_original ,'{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
-                    f_m['targets'][cnt_middle][1],f_m['targets'][cnt_middle][2]),
-                    (10,30), font, 0.5,(0,0,255),2)
+                cv2.putText(middle_image_original,
+                            '{} {:.8f} {:.8f}'.format(f_m['targets'][cnt_middle][0],
+                                                      f_m['targets'][cnt_middle][1],
+                                                      f_m['targets'][cnt_middle][2]),
+                            (10,30),
+                            font, 0.5,(0,0,255),2)
                 cv2.imshow('pic_m',middle_image_original)
-
             cnt_middle +=1
 
-
-        if topics == '/group_middle_cam/node_middle_cam/image_raw/compressed':
+        if topics == RIGHT_CAM_TOPIC:
             if cnt_right >= 200 or cnt_right == 0:
-                f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,'right',file_cnt_r),'w')
+                f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,
+                                                                             'right',
+                                                                             file_cnt_r),
+                                'w')
                 if ENABLE_TEST_BAG:
                     dset = f_r.create_dataset("rgb_original", (200,480,640,3), np.uint8)
                 dset = f_r.create_dataset("rgb", (200,88,200,3), np.uint8)
@@ -285,7 +291,7 @@ def main():
 
 
 
-        if topics == '/group_left_cam/node_left_cam/image_raw/compressed':
+        if topics == LEFT_CAM_TOPIC:
             if cnt_left >= 200 or cnt_left == 0:
                 f_l = h5py.File(left_destination + '{}_{}_{:05d}.h5'.format(location,'left',file_cnt_l),'w')
                 if ENABLE_TEST_BAG:
@@ -321,11 +327,6 @@ def main():
         if SHOW_CAM:# and (cnt_middle==cnt_left) and (cnt_middle==cnt_right):
             cv2.waitKey(0)
             # cv2.destroyAllWindows()
-
-
-
-
-
 
 
     # remove last h5 file if not complete
