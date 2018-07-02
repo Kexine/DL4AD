@@ -97,6 +97,9 @@ if __name__=="__main__":
     dataset_path = args.dataset
     model_path = args.model
 
+    # just for safety so we don't accidently delete our model
+    assert ".pt" in model_path, "Are you sure this is a model? It needs the extension '.pt'!"
+
     # ---------- Initialization
     test_set = H5Dataset(root_dir = dataset_path,
                          transform= transforms.ToTensor(), raiscar=True)
@@ -125,7 +128,7 @@ if __name__=="__main__":
 
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
+    out = cv2.VideoWriter(model_path.replace(".pt", ".avi"),fourcc, 20.0, (640,480))
 
     print("Applying model...")
     if progressbar is not None:
