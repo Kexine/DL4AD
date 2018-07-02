@@ -19,6 +19,8 @@ except ModuleNotFoundError:
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+AGENT_COLOR = (0x00,0x34,0xd1)
+HUMAN_COLOR = (0xd1,0x9c,0x00)
 
 def renderGas(img,
               gas,
@@ -54,14 +56,12 @@ def renderGas(img,
 
 
 def renderSteering(orig_image, raw_value,color, pos):
-    steering_overlay = cv2.imread('steering_wheel.png', cv2.IMREAD_UNCHANGED)
-    cv2.circle(orig_image,(320,480), 63, (0,0,255), 5)
+    cv2.circle(orig_image,(320,480), 68, (0xFF,0xFF,0xFF), 1)
 
-    # TODO: map [-1,+1] joystick output to radian [-pi, +pi]
+    # TODO: map [-1,+1] joystick output to radiant [-pi, +pi]
     # negative is left, positive Right
     # raw_value = -1.0
-    rad = (raw_value - (-1)) * ( (np.pi - (-np.pi) ) / (1 - (-1)) ) + (-np.pi)
-
+    rad = raw_value*np.pi
 
     x, y = pos
     dx = (np.cos(rad - np.pi/2)) * 65
@@ -71,9 +71,7 @@ def renderSteering(orig_image, raw_value,color, pos):
     # print("old vlaue {}, new value {}".format(raw_value, rad))
     # print("dx {}, dy {}".format(dx,dy))
 
-    cv2.arrowedLine(orig_image, (x,y), (x+int(dx),y+int(dy)), color,5)
-
-
+    cv2.arrowedLine(orig_image, (x,y), (x+int(dx),y+int(dy)), color, 2)
 
 
 if __name__=="__main__":
@@ -126,7 +124,7 @@ if __name__=="__main__":
     truth = np.empty((length, 2))
 
     # Define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
 
     print("Applying model...")
@@ -160,8 +158,8 @@ if __name__=="__main__":
 
 
             font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(orig_image,"Human", (15,470),font ,0.5,(0,0,255),2)
-            cv2.putText(orig_image,"Agent", (575,470),font ,0.5,(0,0,255),2)
+            cv2.putText(orig_image,"Human", (15,470),font ,0.5,HUMAN_COLOR,2)
+            cv2.putText(orig_image,"Agent", (575,470),font ,0.5,AGENT_COLOR,2)
 
             renderGas(orig_image, truth[idx][1], (20,450))
             renderGas(orig_image, pred[idx][1], (580,450))
@@ -169,8 +167,8 @@ if __name__=="__main__":
             # render_steering_wheel(orig_image)
             # cv2.putText(orig_image,"{}".format(truth[idx,0]), (100,100),font ,0.5,(0,0,255),2)
 
-            renderSteering(orig_image, truth[idx,0], color=(0,0,255), pos=(320,480))
-            renderSteering(orig_image, pred[idx,0], color=(0,255,0), pos = (320,480))
+            renderSteering(orig_image, truth[idx,0], color=HUMAN_COLOR, pos= (320,480))
+            renderSteering(orig_image, pred[idx,0], color=AGENT_COLOR, pos = (320,480))
 
             # write original image to video
             out.write(orig_image)
