@@ -101,8 +101,9 @@ if __name__=="__main__":
     assert ".pt" in model_path, "Are you sure this is a model? It needs the extension '.pt'!"
 
     # ---------- Initialization
+    raiscar = not (net_type in ['command_input', 'branched'])
     test_set = H5Dataset(root_dir = dataset_path,
-                         transform= transforms.ToTensor(), raiscar=True)
+                         transform= transforms.ToTensor(), raiscar=raiscar)
 
     print("Loading model...")
     if net_type == 'command_input':
@@ -134,10 +135,16 @@ if __name__=="__main__":
     if progressbar is not None:
         bar = progressbar.ProgressBar(max_value = len(test_set))
     with torch.no_grad():
-        for idx, (data, target, orig_image) in enumerate(test_set):
-
+        for idx in range(len(test_set)):
+            if net_type in ['command_input', 'branched']:
+                data, target = test_set[idx]
+                orig_image = cv2.resize(data.numpy().transpose((1,2,0)),
+                                        (640, 480))
+            else:
+                data, target, orig_image = test_set[idx]
 
             data, target = data.to(device), target.to(device)
+
             data.unsqueeze_(0)
             target.unsqueeze_(0)
 
@@ -155,11 +162,7 @@ if __name__=="__main__":
                 truth[idx,0] = target[:,target_idx_raiscar['steer']].cpu().numpy()
                 truth[idx,1] = target[:,target_idx_raiscar['gas']].cpu().numpy()
 
-            # visualize_predictions(orig_image, pred)
-            if progressbar is not None:
-                bar.update(idx)
-
-
+            # Also: get a video of the output!
             font = cv2.FONT_HERSHEY_SIMPLEX
             cv2.putText(orig_image,"Human", (15,470),font ,0.5,HUMAN_COLOR,2)
             cv2.putText(orig_image,"Agent", (575,470),font ,0.5,AGENT_COLOR,2)
@@ -167,20 +170,15 @@ if __name__=="__main__":
             renderGas(orig_image, truth[idx][1], (20,450))
             renderGas(orig_image, pred[idx][1], (580,450))
 
-            # render_steering_wheel(orig_image)
-            # cv2.putText(orig_image,"{}".format(truth[idx,0]), (100,100),font ,0.5,(0,0,255),2)
-
             renderSteering(orig_image, truth[idx,0], color=HUMAN_COLOR, pos= (320,480))
             renderSteering(orig_image, pred[idx,0], color=AGENT_COLOR, pos = (320,480))
 
             # write original image to video
             out.write(orig_image)
 
-
-
-
-    truth_prime = truth - np.mean(truth, axis=0)
-    # truth_prime[np.where(truth == 0)] = np.finfo(float).eps
+            # Update the progressbar
+            if progressbar is not None:
+                bar.update(idx)
 
     # release videowriter
     out.release()
@@ -198,7 +196,7 @@ if __name__=="__main__":
     non_zero_indices = np.where(truth != 0)
     R_squared = np.ones(truth.shape[1]) - np.mean(error[np.where(truth != 0)]**2 / truth[np.where(truth!=0)]**2)
 
-    print("truth norm: {}".format(np.mean(truth_prime**2, axis=0)))
+    print("truth norm: {}".format(np.mean(truth**2, axis=0)))
 
     print("R²: {}".format(R_squared))
 
