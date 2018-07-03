@@ -114,6 +114,32 @@ the network.
 
 For training, we wrote a python script, converting the rosbag files from the run
 into h5 datasets in the form of the simulation.
+
+The errors for the test from the klinikum set are shown in tables \ref{tab:error_branched_aug_klinikum} and 
+
+\begin{table}[H]
+	\centering
+	\caption{Error values for the raiscar command input klinikum net}
+	\begin{tabular}{lccc|ccc}
+		&\multicolumn{3}{c|}{Augmented} & \multicolumn{3}{c}{unaugmented} \\
+		& MSE & (Median error)$^2$ & Truth-Norm & MSE & (Median error)$^2$ & Truth-Norm\\ \hline
+		Steer & NaN & NaN & NaN & NaN & NaN & NaN \\
+		Gas & NaN & NaN & NaN & NaN & NaN & NaN
+	\end{tabular}
+	\label{tab:error_command_aug}
+\end{table}
+\begin{table}[H]
+	\centering
+	\caption{Error values for the raiscar branched klinikum net}
+	\begin{tabular}{lccc|ccc}
+		&\multicolumn{3}{c|}{Augmented} & \multicolumn{3}{c}{unaugmented} \\
+		& MSE & (Median error)$^2$ & Truth-Norm & MSE & (Median error)$^2$ & Truth-Norm\\ \hline
+		Steer & $0.04905803$ & $-0.02669079$ & $0.02211704$ & $0.05199236$ & $-0.03564743$ & $0.02211704$ \\
+		Gas & $0.0365203$ & $0.00254597$ & $0.03715122$ & $0.03229331$ & $0.01118471$ & $0.03715122$
+	\end{tabular}
+	\label{tab:error_branched_aug_klinikum}
+\end{table}
+
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.95\textwidth]{figures/klinikum_command_input_aug_lossplot}
