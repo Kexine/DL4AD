@@ -57,7 +57,7 @@ variable. After this was done, the networks trained properly, as can be seen in
 the loss plots (figures \ref{fig:augmented_command_loss}, \ref{fig:unaugmented_command_loss},
 \ref{fig:augmented_branched_loss}, \ref{fig:unaugmented_branched_loss}).
 
-The errors for the test set are shown in tables \ref{tab:error_command_aug} and \ref{tab:error_command_nonaug}.% TODO
+The errors for the test set are shown in tables \ref{tab:error_command_aug} and \ref{tab:error_branched}.% TODO
 \begin{table}[H]
   \centering
   \caption{Error values for the simulated command input net}
@@ -74,11 +74,11 @@ The errors for the test set are shown in tables \ref{tab:error_command_aug} and 
   \caption{Error values for the simulated branched net}
   \begin{tabular}{lccc|ccc}
     &\multicolumn{3}{c|}{Augmented} & \multicolumn{3}{c}{unaugmented} \\
-    & MSE & (Median error)$^2$ & $R^2$-value & MSE & (Median error)$^2$ & $R^2$-value\\ \hline
-    Steer & NaN & NaN & NaN & NaN & NaN & NaN \\
-    Gas & NaN & NaN & NaN & NaN & NaN & NaN
+    & MSE & (Median error)$^2$ & Truth-Norm & MSE & (Median error)$^2$ & Truth-Norm\\ \hline
+    Steer & 0.01987171 & -0.16173791 & 0.0362544 & 0.01806671 & -0.140342 & 0.0362544 \\
+    Gas & 0.1402119 & -0.29525948 & 0.54769895 & 0.13247385 & -0.7988463 & 0.54769895
   \end{tabular}
-  \label{tab:error_command_nonaug}
+  \label{tab:error_branched}
 \end{table}
 \begin{figure}[!htbp]
   \centering
