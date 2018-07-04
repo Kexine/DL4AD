@@ -28,9 +28,9 @@ BTN_R1 = 5
 AXIS_LEFT_STICK = 0
 AXIS_RIGHT_STICK = 3
 
-LEFT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
-MIDDLE_CAM_TOPIC = '/group_right_cam/node_right_cam/image_raw/compressed'
-RIGHT_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
+LEFT_CAM_TOPIC = '/group_right_cam/node_right_cam/image_raw/compressed'
+MIDDLE_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
+RIGHT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
 
 def msg_to_mat(msg, debayer=False):
 
@@ -98,17 +98,17 @@ def make_dirs(destination, ENABLE_TEST_BAG):
     if not os.path.isdir(middle_destination):
         print("Creating directory..." )
         os.mkdir(middle_destination)
-    if ENABLE_TEST_BAG==False:
-        if not os.path.isdir(right_destination):
-            print("Creating directory..." )
-            os.mkdir(right_destination)
+    # if ENABLE_TEST_BAG==False:
+    if not os.path.isdir(right_destination):
+        print("Creating directory..." )
+        os.mkdir(right_destination)
 
-        if not os.path.isdir(left_destination):
-            print("Creating directory..." )
-            os.mkdir(left_destination)
-    else:
-        right_destination = None
-        left_destination = None
+    if not os.path.isdir(left_destination):
+        print("Creating directory..." )
+        os.mkdir(left_destination)
+    # else:
+    #     right_destination = None
+    #     left_destination = None
 
     return middle_destination, right_destination, left_destination
 
@@ -221,10 +221,6 @@ def main():
         3. left                     3. left
         '''
 
-
-
-        
-
         if topics == MIDDLE_CAM_TOPIC:
             if cnt_middle >= 200 or cnt_middle == 0:
                 f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,
@@ -264,73 +260,73 @@ def main():
                 cv2.imshow('pic_m',middle_image_original)
             cnt_middle +=1
 
-        if  ENABLE_TEST_BAG==False:
-            if topics == RIGHT_CAM_TOPIC:
-                if cnt_right >= 200 or cnt_right == 0:
-                    f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,
-                                                                                 'right',
-                                                                                 file_cnt_r),
-                                    'w')
-                    if ENABLE_TEST_BAG:
-                        dset = f_r.create_dataset("rgb_original", (200,480,640,3), np.uint8)
-                    dset = f_r.create_dataset("rgb", (200,88,200,3), np.uint8)
-                    dset = f_r.create_dataset("targets", (200,3), 'f')
-                    cnt_right = 0
-                    file_cnt_r += 1
-
-                right_image_original = msg_to_mat(msg)
-                rescaled_image = rescale(right_image_original)
-                cmp_cmd = get_complementary_cmd(topics, command)
-
-                if math.isnan(cmp_cmd):
-                    f_r["targets"][cnt_right] = float('nan')
-                else:
-                    targets_r = np.array([cmp_cmd, analog_steer + STEERING_OFFSET, analog_gas ])
-                    f_r["targets"][cnt_right] = targets_r
-                f_r["rgb"][cnt_right,...] = rescaled_image
+        # if  ENABLE_TEST_BAG==False:
+        if topics == RIGHT_CAM_TOPIC:
+            if cnt_right >= 200 or cnt_right == 0:
+                f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,
+                                                                             'right',
+                                                                             file_cnt_r),
+                                'w')
                 if ENABLE_TEST_BAG:
-                    f_r["rgb_original"][cnt_right, ...] = right_image_original
+                    dset = f_r.create_dataset("rgb_original", (200,480,640,3), np.uint8)
+                dset = f_r.create_dataset("rgb", (200,88,200,3), np.uint8)
+                dset = f_r.create_dataset("targets", (200,3), 'f')
+                cnt_right = 0
+                file_cnt_r += 1
 
-                if SHOW_CAM==True:
-                    cv2.putText( right_image_original ,'{} {:.8f} {:.8f}'.format(f_r['targets'][cnt_right][0],
-                        f_r['targets'][cnt_right][1],f_r['targets'][cnt_right][2]),
-                        (10,30), font, 0.5,(0,0,255),2)
-                    cv2.imshow('pic_r',right_image_original)
-                cnt_right +=1
+            right_image_original = msg_to_mat(msg)
+            rescaled_image = rescale(right_image_original)
+            cmp_cmd = get_complementary_cmd(topics, command)
+
+            if math.isnan(cmp_cmd):
+                f_r["targets"][cnt_right] = float('nan')
+            else:
+                targets_r = np.array([cmp_cmd, analog_steer + STEERING_OFFSET, analog_gas ])
+                f_r["targets"][cnt_right] = targets_r
+            f_r["rgb"][cnt_right,...] = rescaled_image
+            if ENABLE_TEST_BAG:
+                f_r["rgb_original"][cnt_right, ...] = right_image_original
+
+            if SHOW_CAM==True:
+                cv2.putText( right_image_original ,'{} {:.8f} {:.8f}'.format(f_r['targets'][cnt_right][0],
+                    f_r['targets'][cnt_right][1],f_r['targets'][cnt_right][2]),
+                    (10,30), font, 0.5,(0,0,255),2)
+                cv2.imshow('pic_r',right_image_original)
+            cnt_right +=1
 
 
 
-            if topics == LEFT_CAM_TOPIC:
-                if cnt_left >= 200 or cnt_left == 0:
-                    f_l = h5py.File(left_destination + '{}_{}_{:05d}.h5'.format(location,'left',file_cnt_l),'w')
-                    if ENABLE_TEST_BAG:
-                        dset = f_l.create_dataset("rgb_original", (200,480,640,3), np.uint8)
-                    dset = f_l.create_dataset("rgb", (200,88,200,3), np.uint8)
-                    dset = f_l.create_dataset("targets", (200,3), 'f')
-                    cnt_left = 0
-                    file_cnt_l += 1
-
-                left_image_original = msg_to_mat(msg)
-                rescaled_image = rescale(left_image_original)
-
-                cmp_cmd = get_complementary_cmd(topics, command)
-
-                if math.isnan(cmp_cmd):
-                    f_l["targets"][cnt_left] = float('nan')
-                else:
-                    targets_l = np.array([cmp_cmd, analog_steer - STEERING_OFFSET, analog_gas ])
-                    f_l["targets"][cnt_left] = targets_l
-                f_l["rgb"][cnt_left,...] = rescaled_image
+        if topics == LEFT_CAM_TOPIC:
+            if cnt_left >= 200 or cnt_left == 0:
+                f_l = h5py.File(left_destination + '{}_{}_{:05d}.h5'.format(location,'left',file_cnt_l),'w')
                 if ENABLE_TEST_BAG:
-                    f_l["rgb_original"][cnt_left, ...] = left_image_original
+                    dset = f_l.create_dataset("rgb_original", (200,480,640,3), np.uint8)
+                dset = f_l.create_dataset("rgb", (200,88,200,3), np.uint8)
+                dset = f_l.create_dataset("targets", (200,3), 'f')
+                cnt_left = 0
+                file_cnt_l += 1
 
-                if SHOW_CAM==True:
-                    cv2.putText( left_image_original ,'{} {:.8f} {:.8f}'.format(f_l['targets'][cnt_left][0],
-                        f_l['targets'][cnt_left][1],f_l['targets'][cnt_left][2]),
-                        (10,30), font, 0.5,(0,0,255),2)
-                    cv2.imshow('pic_l',left_image_original)
+            left_image_original = msg_to_mat(msg)
+            rescaled_image = rescale(left_image_original)
 
-                cnt_left +=1
+            cmp_cmd = get_complementary_cmd(topics, command)
+
+            if math.isnan(cmp_cmd):
+                f_l["targets"][cnt_left] = float('nan')
+            else:
+                targets_l = np.array([cmp_cmd, analog_steer - STEERING_OFFSET, analog_gas ])
+                f_l["targets"][cnt_left] = targets_l
+            f_l["rgb"][cnt_left,...] = rescaled_image
+            if ENABLE_TEST_BAG:
+                f_l["rgb_original"][cnt_left, ...] = left_image_original
+
+            if SHOW_CAM==True:
+                cv2.putText( left_image_original ,'{} {:.8f} {:.8f}'.format(f_l['targets'][cnt_left][0],
+                    f_l['targets'][cnt_left][1],f_l['targets'][cnt_left][2]),
+                    (10,30), font, 0.5,(0,0,255),2)
+                cv2.imshow('pic_l',left_image_original)
+
+            cnt_left +=1
 
         bar.update(idx)
         if SHOW_CAM:# and (cnt_middle==cnt_left) and (cnt_middle==cnt_right):
