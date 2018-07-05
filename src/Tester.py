@@ -61,7 +61,7 @@ def renderSteering(orig_image, raw_value,color, pos):
     # TODO: map [-1,+1] joystick output to radiant [-pi, +pi]
     # negative is left, positive Right
     # raw_value = -1.0
-    rad = raw_value*np.pi
+    rad = raw_value*np.pi/2
 
     x, y = pos
     dx = (np.cos(rad - np.pi/2)) * 65
