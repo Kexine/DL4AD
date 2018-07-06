@@ -167,7 +167,10 @@ class H5Dataset(Dataset):
             targets[self.target_idx['steer']] *= -1.0  # for some reason the steering was inverted
             targets[self.target_idx['gas']] = abs(targets[self.target_idx['gas']])
             # also: if in raiscar mode, extract original sized image
-            orig_image = current_file['rgb_original'][idx]
+            try:
+                orig_image = current_file['rgb_original'][idx]
+            except KeyError:
+                orig_image = current_file['rgb'][idx].transpose((1,0,2))
 
         # when in raiscar mode, return also original image
         if self.transform:
