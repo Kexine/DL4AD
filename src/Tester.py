@@ -142,6 +142,8 @@ if __name__=="__main__":
                                         (640, 480))
             else:
                 data, target, orig_image = test_set[idx]
+                orig_image = cv2.resize(orig_image.transpose((1,0,2)),
+                                        (640,480))
 
             data, target = data.to(device), target.to(device)
 
