@@ -183,9 +183,6 @@ class H5Dataset(Dataset):
                       targets)
             if self.raiscar:
                 sample = (data, targets, orig_image)
-                print(sample)
-
-
 
         return sample
 

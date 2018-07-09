@@ -28,6 +28,31 @@ BTN_R1 = 5
 AXIS_LEFT_STICK = 0
 AXIS_RIGHT_STICK = 3
 
+
+
+
+'''
+Due to random camera initialization of ROS, we have two camera topic setups:
+1. Train Bag:
+
+LEFT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
+MIDDLE_CAM_TOPIC = '/group_right_cam/node_right_cam/image_raw/compressed'
+RIGHT_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
+
+
+2. Eval & Test Bag
+LEFT_CAM_TOPIC = '/group_right_cam/node_right_cam/image_raw/compressed'
+MIDDLE_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
+RIGHT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
+
+
+NOTE: this configuration does not apply to all future data aquisition runs!
+TODO: assign fixed serial numbers to the roslaunch in a way that the same camera
+is always at its assigned position!
+
+'''
+
+
 LEFT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
 MIDDLE_CAM_TOPIC = '/group_right_cam/node_right_cam/image_raw/compressed'
 RIGHT_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
@@ -95,17 +120,17 @@ def make_dirs(destination, ENABLE_TEST_BAG):
     if not os.path.isdir(middle_destination):
         print("Creating directory..." )
         os.mkdir(middle_destination)
-    if ENABLE_TEST_BAG==False:
-        if not os.path.isdir(right_destination):
-            print("Creating directory..." )
-            os.mkdir(right_destination)
+    # if ENABLE_TEST_BAG==False:
+    if not os.path.isdir(right_destination):
+        print("Creating directory..." )
+        os.mkdir(right_destination)
 
-        if not os.path.isdir(left_destination):
-            print("Creating directory..." )
-            os.mkdir(left_destination)
-    else:
-        right_destination = None
-        left_destination = None
+    if not os.path.isdir(left_destination):
+        print("Creating directory..." )
+        os.mkdir(left_destination)
+    # else:
+    #     right_destination = None
+    #     left_destination = None
 
     return middle_destination, right_destination, left_destination
 
@@ -132,6 +157,10 @@ def main():
                         help="Set to true to also store the original image files",
                         action='store_true')
 
+    parser.add_argument("--only_middle",
+                        help="Set to true to only get middle camera images",
+                        action='store_true')
+
     args = parser.parse_args()
     destination = args.destination
     location = args.location
@@ -139,6 +168,7 @@ def main():
     offset = float(args.offset)
     SHOW_CAM = args.show
     ENABLE_TEST_BAG = args.enableTestBag
+    ONLY_MIDDLE = args.only_middle
 
     STEERING_OFFSET = 0.45
 
@@ -217,10 +247,6 @@ def main():
         3. left                     3. left
         '''
 
-
-
-        
-
         if topics == MIDDLE_CAM_TOPIC:
             if cnt_middle >= 200 or cnt_middle == 0:
                 f_m = h5py.File(middle_destination + '{}_{}_{:05d}.h5'.format(location,
@@ -260,7 +286,7 @@ def main():
                 cv2.imshow('pic_m',middle_image_original)
             cnt_middle +=1
 
-        if  ENABLE_TEST_BAG==False:
+        if  ONLY_MIDDLE==False:
             if topics == RIGHT_CAM_TOPIC:
                 if cnt_right >= 200 or cnt_right == 0:
                     f_r = h5py.File(right_destination + '{}_{}_{:05d}.h5'.format(location,

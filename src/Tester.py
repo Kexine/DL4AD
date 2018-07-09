@@ -67,7 +67,7 @@ def renderSteering(orig_image, raw_value,color, pos):
     # TODO: map [-1,+1] joystick output to radiant [-pi, +pi]
     # negative is left, positive Right
     # raw_value = -1.0
-    rad = raw_value*np.pi
+    rad = raw_value*np.pi/2
 
     x, y = pos
     dx = (np.cos(rad - np.pi/2)) * (circle_radius - 2)
@@ -151,12 +151,13 @@ if __name__=="__main__":
                                         (640, 480))
             else:
                 data, target, orig_image = test_set[idx]
+                orig_image = cv2.resize(orig_image.transpose((1,0,2)),
+                                        (640,480))
 
             data, target = data.to(device), target.to(device)
 
             data.unsqueeze_(0)
             target.unsqueeze_(0)
-
             if net_type in ['command_input', 'branched']:
                 command = target[:,target_idx['command']]
                 speed = target[:,target_idx['speed']]
@@ -175,7 +176,7 @@ if __name__=="__main__":
             font = cv2.FONT_HERSHEY_SIMPLEX
             cv2.putText(orig_image,"Human", (15,470),font ,0.5,HUMAN_COLOR,2)
             cv2.putText(orig_image,"Agent", (575,470),font ,0.5,AGENT_COLOR,2)
-
+            cv2.putText(orig_image,"{}".format(command[0]), (120,470),font,0.8,HUMAN_COLOR,2)
             renderGas(orig_image, truth[idx][1], (20,450))
             renderGas(orig_image, pred[idx][1], (580,450))
 
