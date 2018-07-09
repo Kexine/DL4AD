@@ -107,9 +107,6 @@ def get_complementary_cmd(topic, command):
 
     return float('nan')
 
-
-
-
 def make_dirs(destination, ENABLE_TEST_BAG):
     middle_destination = destination + 'middle/'
     right_destination = destination + 'right/'
@@ -204,7 +201,11 @@ def main():
 
     start_time = rospy.Time(bag.get_start_time() + offset) # t.secs=10
 
-    COMMAND_DICT =  {CMD_FOLLOW: 'Follow Lane', CMD_LEFT: 'Left', CMD_RIGHT: 'Right', CMD_STRAIGHT: 'Straight', None: None}
+    COMMAND_DICT =  {CMD_FOLLOW: 'Follow Lane',
+                     CMD_LEFT: 'Left',
+                     CMD_RIGHT: 'Right',
+                     CMD_STRAIGHT: 'Straight',
+                     None: None}
     cnt_middle = 0
     cnt_right = 0
     cnt_left = 0
@@ -220,10 +221,6 @@ def main():
 
     for idx, (topics, msg, t) in enumerate(bag.read_messages(start_time=start_time)):
         if topics=='/joy':
-            '''
-            if current_buttons.buttions[4] == 1 -> turn left
-            if current_buttons.buttions[5] == 1 -> turn right
-            '''
             current_buttons = msg
 
             l1_pressed = current_buttons.buttons[BTN_L1] == 1
@@ -231,7 +228,6 @@ def main():
 
             if l1_pressed and r1_pressed:
                 command = CMD_STRAIGHT
-
             elif l1_pressed:
                 command = CMD_LEFT
             elif r1_pressed:
@@ -294,7 +290,7 @@ def main():
                 f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
             if ENABLE_TEST_BAG:
-                f_m["rgb_original"][cnt_middle,...] = msg_to_mat(msg)
+                f_m["rgb_original"][cnt_middle,...] = middle_image_original
 
             if SHOW_CAM==True:
                 cv2.putText(middle_image_original,

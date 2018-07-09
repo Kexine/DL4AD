@@ -56,7 +56,13 @@ def renderGas(img,
 
 
 def renderSteering(orig_image, raw_value,color, pos):
-    cv2.circle(orig_image,(320,480), 68, (0xFF,0xFF,0xFF), 1)
+    circle_center = (orig_image.shape[0]/2,
+                     orig_image.shape[1])
+    circle_radius = orig_image.shape[0]/10
+    cv2.circle(orig_image,
+               circle_center,
+               circle_radius,
+               (0xFF,0xFF,0xFF), 1)
 
     # TODO: map [-1,+1] joystick output to radiant [-pi, +pi]
     # negative is left, positive Right
@@ -64,14 +70,17 @@ def renderSteering(orig_image, raw_value,color, pos):
     rad = raw_value*np.pi/2
 
     x, y = pos
-    dx = (np.cos(rad - np.pi/2)) * 65
-    dy = (np.sin(rad - np.pi/2)) * 65
+    dx = (np.cos(rad - np.pi/2)) * (circle_radius - 2)
+    dy = (np.sin(rad - np.pi/2)) * (circle_radius - 2)
 
 
     # print("old vlaue {}, new value {}".format(raw_value, rad))
     # print("dx {}, dy {}".format(dx,dy))
 
-    cv2.arrowedLine(orig_image, (x,y), (x+int(dx),y+int(dy)), color, 2)
+    cv2.arrowedLine(orig_image,
+                    (x,y),
+                    (x+int(dx),y+int(dy)),
+                    color, 2)
 
 
 if __name__=="__main__":

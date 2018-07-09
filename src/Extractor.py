@@ -170,7 +170,7 @@ class H5Dataset(Dataset):
             try:
                 orig_image = current_file['rgb_original'][idx]
             except KeyError:
-                orig_image = current_file['rgb'][idx].transpose((1,0,2))
+                orig_image = current_file['rgb'][idx]
 
         # when in raiscar mode, return also original image
         if self.transform:
@@ -183,9 +183,6 @@ class H5Dataset(Dataset):
                       targets)
             if self.raiscar:
                 sample = (data, targets, orig_image)
-                print(sample)
-
-
 
         return sample
 
