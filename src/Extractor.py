@@ -170,7 +170,9 @@ class H5Dataset(Dataset):
             try:
                 orig_image = current_file['rgb_original'][idx]
             except KeyError:
-                orig_image = current_file['rgb'][idx]
+                orig_image = np.multiply(current_file['rgb'][idx], 256,
+                                         type=np.uint8)
+
 
         # when in raiscar mode, return also original image
         if self.transform:
