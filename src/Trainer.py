@@ -140,10 +140,13 @@ def main(net_type,
                                                normalize = True,
                                                std=1)
 
+    raiscar = "raiscar" in net_type
     train_set = H5Dataset(root_dir = traindata_path,
-                          transform = train_transforms)
+                          transform = train_transforms,
+                          raiscar = raiscar)
     eval_set = H5Dataset(root_dir = valdata_path,
-                         transform = basic_transforms)
+                         transform = basic_transforms,
+                         raiscar = raiscar)
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size = batch_size,
                                                shuffle=True,
@@ -173,8 +176,8 @@ def main(net_type,
     # -------------------- Prepare the optimizer + loss function
     # define the weights
     weights = torch.eye(2)
-    weights[0,0] = 0.75
-    weights[1,1] = 0.25
+    weights[0,0] = 0.8  # steering
+    weights[1,1] = 0.2  # acceleration
 
     optimizer = optim.Adam(model.parameters(), lr=0.0002)
 
@@ -199,7 +202,9 @@ def main(net_type,
     # -------------------- Start actual training
     for epoch in range(1, amount_epochs + 1):
         try:
+            print("\n" + 100*"#")
             print('{:#^100}'.format(' Epoch ' + str(epoch) + ' '))
+            print(100*"#" + "\n")
 
             if progressbar is not None:
                 bar = progressbar.ProgressBar(max_value = len(train_loader),

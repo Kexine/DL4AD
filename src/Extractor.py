@@ -92,7 +92,8 @@ class H5Dataset(Dataset):
     def __init__(self, root_dir,
                  transform=None,
                  images_per_file=IMAGES_PER_FILE,
-                 raiscar = False):
+                 raiscar = False,
+                 with_orig_image = False):
         self.root_dir = root_dir
         self.transform = transform
 
@@ -111,6 +112,8 @@ class H5Dataset(Dataset):
             self.target_idx = target_idx_raiscar
         else:
             self.target_idx = target_idx
+
+        self.with_orig_image = with_orig_image
 
     def _check_corruption(self,file_names):
         crpt_idx = []
@@ -162,26 +165,27 @@ class H5Dataset(Dataset):
         # enhance the acceleration data
         if self.raiscar==False:
             targets[self.target_idx['gas']] = targets[self.target_idx['gas']] - targets[self.target_idx['brake']]
-
         else:
             targets[self.target_idx['steer']] *= -1.0  # for some reason the steering was inverted
             targets[self.target_idx['gas']] = abs(targets[self.target_idx['gas']])
             # also: if in raiscar mode, extract original sized image
             try:
-                orig_image = current_file['rgb_original'][idx]
+                orig_image = np.transpose(current_file['rgb_original'][idx],
+                                          (1,0,2))
             except KeyError:
-                orig_image = current_file['rgb'][idx]
+                orig_image = np.transpose(current_file['rgb'][idx],
+                                          (1,0,2))
 
         # when in raiscar mode, return also original image
         if self.transform:
             sample = (self.transform(data),
                       torch.Tensor(targets))
-            if self.raiscar:
+            if self.raiscar and self.with_orig_image:
                 sample = (self.transform(data), torch.Tensor(targets), orig_image)
         else:
             sample = (data,
                       targets)
-            if self.raiscar:
+            if self.raiscar and self.with_orig_image:
                 sample = (data, targets, orig_image)
 
         return sample
