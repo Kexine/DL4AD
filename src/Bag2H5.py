@@ -52,9 +52,9 @@ is always at its assigned position!
 '''
 
 
-LEFT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
+LEFT_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
 MIDDLE_CAM_TOPIC = '/group_right_cam/node_right_cam/image_raw/compressed'
-RIGHT_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
+RIGHT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
 
 def msg_to_mat(msg, debayer=False):
 
@@ -172,7 +172,7 @@ def main():
     ENABLE_TEST_BAG = args.enableTestBag
     ONLY_MIDDLE = args.only_middle
 
-    STEERING_OFFSET = 0.45
+    STEERING_OFFSET = 0.75 # old: 0.45
     TRACE_SIZE = int(args.window)
 
     # create directories and return paths
