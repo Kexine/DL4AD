@@ -56,9 +56,9 @@ def renderGas(img,
 
 
 def renderSteering(orig_image, raw_value,color, pos):
-    circle_center = (orig_image.shape[0]/2,
+    circle_center = (int(orig_image.shape[0]/2),
                      orig_image.shape[1])
-    circle_radius = orig_image.shape[0]/10
+    circle_radius = int(orig_image.shape[0]/10)
     cv2.circle(orig_image,
                circle_center,
                circle_radius,
@@ -112,7 +112,9 @@ if __name__=="__main__":
     # ---------- Initialization
     raiscar = not (net_type in ['command_input', 'branched'])
     test_set = H5Dataset(root_dir = dataset_path,
-                         transform= transforms.ToTensor(), raiscar=raiscar)
+                         transform= transforms.ToTensor(),
+                         raiscar=raiscar,
+                         with_orig_image = raiscar)
 
     print("Loading model...")
     if net_type == 'command_input':
@@ -177,8 +179,8 @@ if __name__=="__main__":
             cv2.putText(orig_image,"Human", (15,470),font ,0.5,HUMAN_COLOR,2)
             cv2.putText(orig_image,"Agent", (575,470),font ,0.5,AGENT_COLOR,2)
             cv2.putText(orig_image,"{}".format(command[0]), (120,470),font,0.8,HUMAN_COLOR,2)
-            renderGas(orig_image, truth[idx][1], (20,450))
-            renderGas(orig_image, pred[idx][1], (580,450))
+            renderGas(orig_image, truth[idx, 1], (20,450))
+            renderGas(orig_image, pred[idx, 1], (580,450))
 
             renderSteering(orig_image, truth[idx,0], color=HUMAN_COLOR, pos= (320,480))
             renderSteering(orig_image, pred[idx,0], color=AGENT_COLOR, pos = (320,480))

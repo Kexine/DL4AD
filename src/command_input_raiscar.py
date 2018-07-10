@@ -51,7 +51,6 @@ except ModuleNotFoundError:
 
 # define the cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print("Running on device: {}".format(device))
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
