@@ -55,7 +55,7 @@ def renderGas(img,
              (0xFF, 0xFF, 0xFF))
 
 
-def renderSteering(orig_image, raw_value,color, pos):
+def renderSteering(orig_image, raw_value,color, pos, old_visual=False):
     circle_center = (int(orig_image.shape[0]/2),
                      orig_image.shape[1])
     circle_radius = int(orig_image.shape[0]/10)
@@ -67,7 +67,10 @@ def renderSteering(orig_image, raw_value,color, pos):
     # TODO: map [-1,+1] joystick output to radiant [-pi, +pi]
     # negative is left, positive Right
     # raw_value = -1.0
-    rad = raw_value*np.pi/2
+    if old_visual:
+        rad = raw_value*np.pi/2
+    else:
+        rad = (raw_value**5)*np.pi/2
 
     x, y = pos
     dx = (np.cos(rad - np.pi/2)) * (circle_radius - 2)
@@ -100,6 +103,9 @@ if __name__=="__main__":
     parser.add_argument("-d", "--dataset",
                         help="Directory of the test data",
                         default='../data/AgentHuman/SeqVal')
+    parser.add_argument("--old_visual",
+                        help="set to true to activate old visual steering scaling",
+                        action='store_true')
     args = parser.parse_args()
 
     net_type = args.type
