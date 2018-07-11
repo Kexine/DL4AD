@@ -18,6 +18,9 @@ import progressbar
 import random
 import math
 
+
+### CONSTANTS ###
+
 CMD_FOLLOW = 2
 CMD_LEFT = 3
 CMD_RIGHT = 4
@@ -28,6 +31,12 @@ BTN_R1 = 5
 AXIS_LEFT_STICK = 0
 AXIS_RIGHT_STICK = 3
 
+
+STEERING_OFFSET = 0.75 # before smoothing by arduino: 0.45
+GAS_SIDE_FACTOR = 0.80 # multiplies gas value from side cameras with this factor
+
+STEERING_MIN = -1.0
+STEERING_MAX = 1.0
 
 
 '''
@@ -174,8 +183,6 @@ def main():
     ONLY_MIDDLE = args.only_middle
     TRACE_SIZE = int(args.window)
 
-    STEERING_OFFSET = 0.75 # before smoothing by arduino: 0.45
-    GAS_SIDE_FACTOR = 0.80 # multiplies gas value from side cameras with this factor
 
     # create directories and return paths
     middle_destination, right_destination, left_destination = make_dirs(destination,ENABLE_TEST_BAG)
@@ -284,7 +291,7 @@ def main():
                 f_m["targets"][cnt_middle] = float('nan')
             else:
                 targets_m = np.array([command,
-                                      analog_steer,
+                                      np.clip(analog_steer, STEERING_MIN, STEERING_MAX),
                                       analog_gas])
                 f_m["targets"][cnt_middle] = targets_m
             f_m["rgb"][cnt_middle,...] = rescaled_image
@@ -326,7 +333,7 @@ def main():
                 if math.isnan(command):
                     f_r["targets"][cnt_right] = float('nan')
                 else:
-                    targets_r = np.array([command, analog_steer + STEERING_OFFSET, analog_gas*GAS_SIDE_FACTOR ])
+                    targets_r = np.array([command, np.clip(analog_steer + STEERING_OFFSET, STEERING_MIN, STEERING_MAX), analog_gas*GAS_SIDE_FACTOR ])
                     f_r["targets"][cnt_right] = targets_r
                 f_r["rgb"][cnt_right,...] = rescaled_image
                 if ENABLE_TEST_BAG:
@@ -362,7 +369,7 @@ def main():
                 if math.isnan(command):
                     f_l["targets"][cnt_left] = float('nan')
                 else:
-                    targets_l = np.array([command, analog_steer - STEERING_OFFSET, analog_gas*GAS_SIDE_FACTOR ])
+                    targets_l = np.array([command, np.clip(analog_steer - STEERING_OFFSET, STEERING_MIN, STEERING_MAX), analog_gas*GAS_SIDE_FACTOR ])
                     f_l["targets"][cnt_left] = targets_l
                 f_l["rgb"][cnt_left,...] = rescaled_image
                 if ENABLE_TEST_BAG:
