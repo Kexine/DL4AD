@@ -176,8 +176,8 @@ def main(net_type,
     # -------------------- Prepare the optimizer + loss function
     # define the weights
     weights = torch.eye(2)
-    weights[0,0] = 0.8  # steering
-    weights[1,1] = 0.2  # acceleration
+    weights[0,0] = 1.0  # steering
+    weights[1,1] = 0.0  # acceleration
 
     optimizer = optim.Adam(model.parameters(), lr=0.0002)
 
