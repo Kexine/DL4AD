@@ -161,7 +161,8 @@ def main():
                         action='store_true')
     parser.add_argument("-w","--window",
                         help="Set size of rolling window for steering smoothing",
-                        default=10)
+                        default=1)
+
 
     args = parser.parse_args()
     destination = args.destination
@@ -171,9 +172,9 @@ def main():
     SHOW_CAM = args.show
     ENABLE_TEST_BAG = args.enableTestBag
     ONLY_MIDDLE = args.only_middle
-
-    STEERING_OFFSET = 0.75 # old: 0.45
     TRACE_SIZE = int(args.window)
+
+    STEERING_OFFSET = 0.75  # before smoothing by arduino: 0.45
 
     # create directories and return paths
     middle_destination, right_destination, left_destination = make_dirs(destination,ENABLE_TEST_BAG)
@@ -238,13 +239,11 @@ def main():
             dir_string = COMMAND_DICT[command]
 
             # turning left is positive, turning right is negative
+
             steer_trace[ctrl_idx % TRACE_SIZE ] =  current_buttons.axes[AXIS_LEFT_STICK]
             ctrl_idx += 1
 
             # analog_steer = current_buttons.axes[AXIS_LEFT_STICK]
-
-
-
             # left_stick_up_down = current_buttons.axes[1]
 
             # right_stick_left_right =  current_buttons.axes[2]
@@ -277,9 +276,8 @@ def main():
 
             analog_steer = np.mean(steer_trace)
 
-            # print("steer trace {}".format(steer_trace))
-            # print("averaged steer {}".format(analog_steer))
-            # print("ctrl index {}".format(ctrl_idx))
+
+            # save middle cam information
 
             if math.isnan(command):
                 f_m["targets"][cnt_middle] = float('nan')
@@ -318,9 +316,11 @@ def main():
 
                 right_image_original = msg_to_mat(msg)
                 rescaled_image = rescale(right_image_original)
+
                 cmp_cmd = get_complementary_cmd(topics, command)
 
                 analog_steer = np.mean(steer_trace)
+
 
                 if math.isnan(cmp_cmd):
                     f_r["targets"][cnt_right] = float('nan')
@@ -356,6 +356,7 @@ def main():
                 cmp_cmd = get_complementary_cmd(topics, command)
 
                 analog_steer = np.mean(steer_trace)
+
 
                 if math.isnan(cmp_cmd):
                     f_l["targets"][cnt_left] = float('nan')
