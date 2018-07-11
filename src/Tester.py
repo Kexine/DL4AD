@@ -19,6 +19,8 @@ except ModuleNotFoundError:
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+command_to_text = {5: "Straight", 4: "Right", 3: "Left"}
+
 AGENT_COLOR = (0x00,0x34,0xd1)
 HUMAN_COLOR = (0xd1,0x9c,0x00)
 
@@ -56,11 +58,9 @@ def renderGas(img,
 
 
 def renderSteering(orig_image, raw_value,color, pos, old_visual=False):
-    circle_center = (int(orig_image.shape[0]/2),
-                     orig_image.shape[1])
-    circle_radius = int(orig_image.shape[0]/10)
+    circle_radius = 57 # int(orig_image.shape[0]/10)
     cv2.circle(orig_image,
-               circle_center,
+               pos,
                circle_radius,
                (0xFF,0xFF,0xFF), 1)
 
@@ -75,7 +75,6 @@ def renderSteering(orig_image, raw_value,color, pos, old_visual=False):
     x, y = pos
     dx = (np.cos(rad - np.pi/2)) * (circle_radius - 2)
     dy = (np.sin(rad - np.pi/2)) * (circle_radius - 2)
-
 
     # print("old vlaue {}, new value {}".format(raw_value, rad))
     # print("dx {}, dy {}".format(dx,dy))
@@ -184,7 +183,8 @@ if __name__=="__main__":
             font = cv2.FONT_HERSHEY_SIMPLEX
             cv2.putText(orig_image,"Human", (15,470),font ,0.5,HUMAN_COLOR,2)
             cv2.putText(orig_image,"Agent", (575,470),font ,0.5,AGENT_COLOR,2)
-            cv2.putText(orig_image,"{}".format(command[0]), (120,470),font,0.8,HUMAN_COLOR,2)
+            cv2.putText(orig_image,"{}".format(command_to_text[int(command[0])]),
+                        (120,470),font,0.8,HUMAN_COLOR,2)
             renderGas(orig_image, truth[idx, 1], (20,450))
             renderGas(orig_image, pred[idx, 1], (580,450))
 
