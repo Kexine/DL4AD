@@ -30,7 +30,6 @@ AXIS_RIGHT_STICK = 3
 
 
 
-
 '''
 Due to random camera initialization of ROS, we have two camera topic setups:
 1. Train Bag:
@@ -53,9 +52,9 @@ is always at its assigned position!
 '''
 
 
-LEFT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
+LEFT_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
 MIDDLE_CAM_TOPIC = '/group_right_cam/node_right_cam/image_raw/compressed'
-RIGHT_CAM_TOPIC = '/group_middle_cam/node_middle_cam/image_raw/compressed'
+RIGHT_CAM_TOPIC = '/group_left_cam/node_left_cam/image_raw/compressed'
 
 def msg_to_mat(msg, debayer=False):
 
@@ -160,6 +159,10 @@ def main():
     parser.add_argument("--only_middle",
                         help="Set to true to only get middle camera images",
                         action='store_true')
+    parser.add_argument("-w","--window",
+                        help="Set size of rolling window for steering smoothing",
+                        default=1)
+
 
     args = parser.parse_args()
     destination = args.destination
@@ -169,8 +172,10 @@ def main():
     SHOW_CAM = args.show
     ENABLE_TEST_BAG = args.enableTestBag
     ONLY_MIDDLE = args.only_middle
+    TRACE_SIZE = int(args.window)
 
-    STEERING_OFFSET = 0.45
+    STEERING_OFFSET = 0.75 # before smoothing by arduino: 0.45
+    GAS_SIDE_FACTOR = 0.80 # multiplies gas value from side cameras with this factor
 
     # create directories and return paths
     middle_destination, right_destination, left_destination = make_dirs(destination,ENABLE_TEST_BAG)
@@ -211,6 +216,9 @@ def main():
     file_cnt_r = 0
     file_cnt_l = 0
 
+    ctrl_idx = 0
+    steer_trace = np.zeros(TRACE_SIZE)
+
     bar = progressbar.ProgressBar(max_value = bag.get_message_count())
 
     for idx, (topics, msg, t) in enumerate(bag.read_messages(start_time=start_time)):
@@ -232,7 +240,11 @@ def main():
             dir_string = COMMAND_DICT[command]
 
             # turning left is positive, turning right is negative
-            analog_steer = current_buttons.axes[AXIS_LEFT_STICK]
+
+            steer_trace[ctrl_idx % TRACE_SIZE ] =  current_buttons.axes[AXIS_LEFT_STICK]
+            ctrl_idx += 1
+
+            # analog_steer = current_buttons.axes[AXIS_LEFT_STICK]
             # left_stick_up_down = current_buttons.axes[1]
 
             # right_stick_left_right =  current_buttons.axes[2]
@@ -262,6 +274,9 @@ def main():
 
             middle_image_original = msg_to_mat(msg)
             rescaled_image = rescale(middle_image_original)
+
+            analog_steer = np.mean(steer_trace)
+
 
             # save middle cam information
 
@@ -302,12 +317,16 @@ def main():
 
                 right_image_original = msg_to_mat(msg)
                 rescaled_image = rescale(right_image_original)
-                cmp_cmd = get_complementary_cmd(topics, command)
 
-                if math.isnan(cmp_cmd):
+                # cmp_cmd = get_complementary_cmd(topics, command)
+
+                analog_steer = np.mean(steer_trace)
+
+
+                if math.isnan(command):
                     f_r["targets"][cnt_right] = float('nan')
                 else:
-                    targets_r = np.array([cmp_cmd, analog_steer + STEERING_OFFSET, analog_gas ])
+                    targets_r = np.array([command, analog_steer + STEERING_OFFSET, analog_gas*GAS_SIDE_FACTOR ])
                     f_r["targets"][cnt_right] = targets_r
                 f_r["rgb"][cnt_right,...] = rescaled_image
                 if ENABLE_TEST_BAG:
@@ -335,12 +354,15 @@ def main():
                 left_image_original = msg_to_mat(msg)
                 rescaled_image = rescale(left_image_original)
 
-                cmp_cmd = get_complementary_cmd(topics, command)
+                # cmp_cmd = get_complementary_cmd(topics, command)
 
-                if math.isnan(cmp_cmd):
+                analog_steer = np.mean(steer_trace)
+
+
+                if math.isnan(command):
                     f_l["targets"][cnt_left] = float('nan')
                 else:
-                    targets_l = np.array([cmp_cmd, analog_steer - STEERING_OFFSET, analog_gas ])
+                    targets_l = np.array([command, analog_steer - STEERING_OFFSET, analog_gas*GAS_SIDE_FACTOR ])
                     f_l["targets"][cnt_left] = targets_l
                 f_l["rgb"][cnt_left,...] = rescaled_image
                 if ENABLE_TEST_BAG:
