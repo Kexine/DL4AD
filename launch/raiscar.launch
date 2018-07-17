@@ -1,0 +1,11 @@
+<launch>
+  <!-- roscore is started automatically by launch -->
+	<include file="$(find usb_cam)/launch/usb_cam-test.launch"/>
+  <node name="joy_node" pkg="joy" type="joy_node" />
+  <node name="raiscar_node" pkg="raiscar" type="raiscar_node" />
+  <node name="serial_node" pkg="rosserial_python" type="serial_node.py" args="/dev/ttyACM0" />
+	
+	<node pkg="rosbag" type="record" name="rosbag_record_cams" args="-o camera /group_middle_cam/node_middle_cam/image_raw/compressed /group_left_cam/node_left_cam/image_raw/compressed /group_right_cam/node_right_cam/image_raw/compressed /joy" output="screen"/>
+
+
+</launch> 

@@ -1,0 +1,7 @@
+<launch>
+  <!-- roscore is started automatically by launch -->
+  <node name="joy_node" pkg="joy" type="joy_node" />
+  <node name="raiscar_node" pkg="raiscar" type="raiscar_node" />
+  <node name="serial_node" pkg="rosserial_python" type="serial_node.py" args="/dev/ttyACM0" />
+
+</launch> 

@@ -131,8 +131,8 @@ class GaussianNoise(object):
         return img
 
     def __str__(self):
-        return "Gaussian Noise transform, μ= {}, σ= {} ".format(self.mean,
-                                                                self.std)
+        return "Gaussian Noise transform, mean= {}, simga= {} ".format(self.mean,
+                                                                    self.std)
 
 
 class RegionDropout(object):
@@ -186,7 +186,7 @@ class GaussianBlur(object):
         img = torch.from_numpy(gaussian_filter(img, self.sigma, mode='constant'))
         return img
     def __str__(self):
-        return "Gaussian Blur, σ= {}".format(self.sigma)
+        return "Gaussian Blur, sigma= {}".format(self.sigma)
 
 
 class ContrastNBrightness(object):
@@ -199,4 +199,4 @@ class ContrastNBrightness(object):
         return img * self.alpha + torch.ones(img.shape)*self.beta
 
     def __str__(self):
-        return "Contrast n Brigntess, α= {}, β= {}".format(self.alpha, self.beta)
+        return "Contrast n Brigntess, alpha= {}, beta= {}".format(self.alpha, self.beta)

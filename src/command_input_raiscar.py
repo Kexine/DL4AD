@@ -7,9 +7,7 @@ Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 """
 
 from __future__ import print_function, division
-import h5py
 import numpy as np
-import pandas as pd
 import os, os.path
 import random
 
@@ -26,7 +24,7 @@ from torchvision import datasets, transforms
 # our custom modules
 from customTransforms import *
 from ImageHandling import ImageBrowser
-from Extractor import H5Dataset, target_idx_raiscar, better_random_split, optimized_split
+
 from CustomLoss import WeightedMSELoss
 
 import sys
@@ -37,17 +35,8 @@ torch.manual_seed(1)
 
 import cProfile, pstats, io
 
-try:
-    import progressbar
-    progress_widgets = [progressbar.widgets.DynamicMessage('loss'),
-                        ' ', progressbar.widgets.Percentage(),
-                        ' ', progressbar.widgets.Bar(),
-                        ' ', progressbar.widgets.Timer(),
-                        ' ', progressbar.widgets.AdaptiveETA(samples = 200),
-                        ' ', progressbar.widgets.CurrentTime()]
-except ModuleNotFoundError:
-    progressbar = None
-
+# declare the progress_widgets
+progress_widgets = None
 
 # define the cuda device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -259,6 +248,22 @@ def evaluate(model,
 def main():
     import argparse
     import time
+    from Extractor import H5Dataset, target_idx_raiscar, better_random_split, optimized_split
+    import pandas as pd
+
+    try:
+        import progressbar
+        progress_widgets = [progressbar.widgets.DynamicMessage('loss'),
+                            ' ', progressbar.widgets.Percentage(),
+                            ' ', progressbar.widgets.Bar(),
+                            ' ', progressbar.widgets.Timer(),
+                            ' ', progressbar.widgets.AdaptiveETA(samples = 200),
+                            ' ', progressbar.widgets.CurrentTime()]
+    except ModuleNotFoundError:
+        progressbar = None
+
+
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--model",
                         help="A (existing?) model file to store to",
