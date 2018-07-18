@@ -157,7 +157,7 @@ class H5Dataset(Dataset):
         # if we mirror the images, a file idx, bigger than the amount of files we actually have, divide by two and take the mirrored
         if file_idx >= len(self.file_names):
             file_idx = file_idx % len(self.file_names)
-            mirror = False
+            mirror = True
         else:
             mirror = False
 
