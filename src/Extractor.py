@@ -93,15 +93,14 @@ class H5Dataset(Dataset):
                  transform=None,
                  images_per_file=IMAGES_PER_FILE,
                  raiscar = False,
-                 with_orig_image = False):
+                 with_orig_image = False,
+                 with_mirror_images = False):
         self.root_dir = root_dir
         self.transform = transform
 
         self.file_names = sorted(os.listdir(self.root_dir))
         self.file_names = self._check_corruption(self.file_names)
-
-        # List with all the filehandles
-        self.file_handle_dict = {}
+        print("Amount of files: {}".format(len(self.file_names)))
 
         # Queue storing the order of the filehandles in RAM
         self.file_idx_queue = collections.deque()
@@ -114,6 +113,8 @@ class H5Dataset(Dataset):
             self.target_idx = target_idx
 
         self.with_orig_image = with_orig_image
+
+        self.with_mirror_images = with_mirror_images
 
     def _check_corruption(self,file_names):
         crpt_idx = []
@@ -137,7 +138,12 @@ class H5Dataset(Dataset):
 
 
     def __len__(self):
-        return len(self.file_names)*IMAGES_PER_FILE
+        # with the mirrored images, we claim that we have twice the amount
+        if self.with_mirror_images:
+            scaler = 2
+        else:
+            scaler = 1
+        return len(self.file_names)*IMAGES_PER_FILE * scaler
 
     def __getitem__(self, idx):
         # The input idx seems sequential but we're actually going through the
@@ -148,25 +154,27 @@ class H5Dataset(Dataset):
         file_idx = int(idx / IMAGES_PER_FILE)
         idx = idx % IMAGES_PER_FILE
 
-        if self.file_handle_dict.get(file_idx) is None:
-            if len(self.file_idx_queue) >= MAX_QUEUE_LENGTH:
-                popped_idx = self.file_idx_queue.pop()
-                self.file_handle_dict[popped_idx].close()
-                del self.file_handle_dict[popped_idx]
+        # if we mirror the images, a file idx, bigger than the amount of files we actually have, divide by two and take the mirrored
+        if file_idx >= len(self.file_names):
+            file_idx = file_idx % len(self.file_names)
+            mirror = False
+        else:
+            mirror = False
 
-            self.file_idx_queue.append(file_idx)
-            self.file_handle_dict[file_idx] = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
-
-        current_file = self.file_handle_dict[file_idx]
+        current_file = h5py.File(self.root_dir + '/' + self.file_names[file_idx], 'r')
 
         data = current_file['rgb'][idx]
         targets = current_file['targets'][idx]
+
+        if mirror:
+            data = np.fliplr(data)
 
         # enhance the acceleration data
         if self.raiscar==False:
             targets[self.target_idx['gas']] = targets[self.target_idx['gas']] - targets[self.target_idx['brake']]
         else:
-            targets[self.target_idx['steer']] *= -1.0  # for some reason the steering was inverted
+            if not mirror:
+                targets[self.target_idx['steer']] *= -1.0  # for some reason the steering was inverted
             targets[self.target_idx['gas']] = abs(targets[self.target_idx['gas']])
             # also: if in raiscar mode, extract original sized image
             try:

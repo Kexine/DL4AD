@@ -143,7 +143,8 @@ def main(net_type,
     raiscar = "raiscar" in net_type
     train_set = H5Dataset(root_dir = traindata_path,
                           transform = train_transforms,
-                          raiscar = raiscar)
+                          raiscar = raiscar,
+                          with_mirror_images = True)
     eval_set = H5Dataset(root_dir = valdata_path,
                          transform = basic_transforms,
                          raiscar = raiscar)
@@ -151,13 +152,13 @@ def main(net_type,
                                                batch_size = batch_size,
                                                shuffle=True,
                                                pin_memory=False,
-                                               num_workers=4,
+                                               num_workers= 4,
                                                drop_last=True)
 
     eval_loader = torch.utils.data.DataLoader(eval_set,
                                               batch_size=batch_size,
                                               shuffle=True,
-                                              num_workers=4,
+                                              num_workers= 4,
                                               drop_last=True)
 
     # -------------------- Prepare the model
