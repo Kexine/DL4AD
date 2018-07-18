@@ -166,15 +166,11 @@ class H5Dataset(Dataset):
         data = current_file['rgb'][idx]
         targets = current_file['targets'][idx]
 
-        if mirror:
-            data = np.fliplr(data)
-
         # enhance the acceleration data
         if self.raiscar==False:
             targets[self.target_idx['gas']] = targets[self.target_idx['gas']] - targets[self.target_idx['brake']]
         else:
-            if not mirror:
-                targets[self.target_idx['steer']] *= -1.0  # for some reason the steering was inverted
+            targets[self.target_idx['steer']] *= -1.0  # for some reason the steering was inverted
             targets[self.target_idx['gas']] = abs(targets[self.target_idx['gas']])
             # also: if in raiscar mode, extract original sized image
             try:
@@ -184,17 +180,27 @@ class H5Dataset(Dataset):
                 orig_image = np.transpose(current_file['rgb'][idx],
                                           (1,0,2))
 
+        if mirror:
+            data = np.copy(np.fliplr(data))
+            targets[self.target_idx['steer']] *= -1.0
+
+
         # when in raiscar mode, return also original image
         if self.transform:
-            sample = (self.transform(data),
-                      torch.Tensor(targets))
             if self.raiscar and self.with_orig_image:
-                sample = (self.transform(data), torch.Tensor(targets), orig_image)
+                sample = [self.transform(data),
+                          torch.Tensor(targets),
+                          orig_image]
+            else:
+                sample = [self.transform(data),
+                          torch.Tensor(targets)]
+            # also, flip the image, if this is the mirror
+
         else:
-            sample = (data,
-                      targets)
+            sample = [data,
+                      targets]
             if self.raiscar and self.with_orig_image:
-                sample = (data, targets, orig_image)
+                sample = [data, targets, orig_image]
 
         return sample
 
