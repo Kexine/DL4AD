@@ -15,16 +15,11 @@ import command_input_raiscar
 import Branched_raiscar
 
 from sensor_msgs.msg import Image
-from sensor_msgs.msg import Joy
 from raiscar.msg import MotorController
 
 # Instantiate CvBridge
 bridge = CvBridge()
 camera_topic = "/middle_cam/image_raw"
-float hlcmd = 5.0
-float acceleration = 0.0
-float steer = 0.0
-
 class AutonomousDriver(object):
     def __init__(self):
         # In ROS, nodes are uniquely named. If two nodes with the same
@@ -38,9 +33,6 @@ class AutonomousDriver(object):
         rospy.Subscriber(camera_topic,
                          Image,
                          self.callback)
-        rospy.Subscriber("/joy",
-                         Joy,
-                         self.controller_callback)
 
         # -------------------- Initialize the NN
         # set the cuda device
@@ -52,17 +44,6 @@ class AutonomousDriver(object):
         self.model = Branched_raiscar.Net().to(self.device)
         self.model.load_state_dict(torch.load("/home/minicar1/deep_learning_models/b_aug_hw_smoothed_clipped_110718_cont.pt"))
 
-
-    def controller_callback(self, msg):
-        #mapping the acceleration
-        acceleration = 1-((1-msg.axes[3])/2)
-
-        if msg.buttons[4] == 1 and msg.buttons[5] == 0:
-            hlcmd = 3.0
-        if msg.buttons[4] == 0 and msg.buttons[5] == 1:
-            hlcmd = 4.0
-        if msg.buttons[4] == 1 and msg.buttons[5] == 1:
-            hlcmd = 5.0
 
     def callback(self, data):
         try:
@@ -86,20 +67,19 @@ class AutonomousDriver(object):
             net_img = torch.Tensor(net_img).unsqueeze(0).to(self.device)
 
             # currently, we only have the high level command straight
-            high_level_command = torch.Tensor([hlcmd]).unsqueeze(0).to(self.device)
+            high_level_command = torch.Tensor([5.0]).unsqueeze(0).to(self.device)
 
             # actual applying of the model
             control_predict = self.model(net_img,
                                          high_level_command)
             control_predict = control_predict.cpu().detach().numpy()
 
+
+
             # we get a vector of size (1,2)
             control_predict[0,1] = 0.45
             self.control_signal.angle = control_predict[0,0]
-            if acceleration >= 0.7 or acceleration <= -0.5:
-                self.control_signal.speed = acceleration
-            else:
-                self.control_signal.speed = 0.5
+            self.control_signal.speed = control_predict[0,1]
             self.control_pub.publish(self.control_signal)
 
             rospy.loginfo("\nSteer predicted: " + str(control_predict[0,0]) + "\nAcc. predicted: " + str(control_predict[0,1]))
