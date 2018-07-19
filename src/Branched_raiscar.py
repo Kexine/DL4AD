@@ -8,9 +8,8 @@ Michael Floßmann, Kshitij Sirohi, Hendrik Vloet
 
 #!/usr/bin/env python3
 from __future__ import print_function, division
-import h5py
+
 import numpy as np
-import pandas as pd
 import os, os.path
 import random
 
@@ -26,24 +25,10 @@ from torchvision import datasets, transforms
 # our custom modules
 from customTransforms import *
 from ImageHandling import ImageBrowser
-from Extractor import H5Dataset, target_idx_raiscar, better_random_split, optimized_split
 from CustomLoss import WeightedMSELoss
-
-from command_input import load_model, save_model, progress_widgets
 
 import warnings
 torch.manual_seed(1)
-
-try:
-    import progressbar
-    progress_widgets = [progressbar.widgets.DynamicMessage('loss'),
-                        ' ', progressbar.widgets.Percentage(),
-                        ' ', progressbar.widgets.Bar(),
-                        ' ', progressbar.widgets.Timer(),
-                        ' ', progressbar.widgets.AdaptiveETA(samples = 200),
-                        ' ', progressbar.widgets.CurrentTime()]
-except ModuleNotFoundError:
-    progressbar = None
 
 BATCH_LOSS_RATE = 1
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -245,8 +230,12 @@ def evaluate(model,
 
 def main():
     # --------------- Parse arguments ---------------
+    import h5py
+    import pandas as pd
     import argparse
     import time
+    from Extractor import H5Dataset, target_idx_raiscar, better_random_split, optimized_split
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--model",
                         help="A (existing?) model file to store to",

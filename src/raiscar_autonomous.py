@@ -21,18 +21,20 @@ from raiscar.msg import MotorController
 # Instantiate CvBridge
 bridge = CvBridge()
 camera_topic = "/middle_cam/image_raw"
-float hlcmd = 5.0
-float acceleration = 0.0
-float steer = 0.0
+
+class myvariables:
+    hlcmd = 5.0
+    acceleration = 0.0
+    steer = 0.0
 
 class AutonomousDriver(object):
-    def __init__(self):
+    def __init__(self, VARS):
         # In ROS, nodes are uniquely named. If two nodes with the same
         # node are launched, the previous one is kicked off. The
         # anonymous=True flag means that rospy will choose a unique
         # name for our 'listener' node so that multiple listeners can
         # run simultaneously.
-
+        self.VARS = VARS
         rospy.init_node('raiscar_autonomous', anonymous=True)
         self.control_pub = rospy.Publisher('controls', MotorController, queue_size=1000)
         rospy.Subscriber(camera_topic,
@@ -58,11 +60,13 @@ class AutonomousDriver(object):
         acceleration = 1-((1-msg.axes[3])/2)
 
         if msg.buttons[4] == 1 and msg.buttons[5] == 0:
-            hlcmd = 3.0
-        if msg.buttons[4] == 0 and msg.buttons[5] == 1:
-            hlcmd = 4.0
-        if msg.buttons[4] == 1 and msg.buttons[5] == 1:
-            hlcmd = 5.0
+            self.VARS.hlcmd = 3.0
+        elif msg.buttons[4] == 0 and msg.buttons[5] == 1:
+            self.VARS.hlcmd = 4.0
+        else:
+            self.VARS.hlcmd = 5.0
+
+        print(self.VARS.hlcmd)
 
     def callback(self, data):
         try:
@@ -80,13 +84,14 @@ class AutonomousDriver(object):
 
             net_img = np.transpose(net_img,
                                    (2,0,1))
-            print(net_img.shape)
+            #print(net_img.shape)
 
             # unsqueeze, to make a "batch" of size 1
             net_img = torch.Tensor(net_img).unsqueeze(0).to(self.device)
 
             # currently, we only have the high level command straight
-            high_level_command = torch.Tensor([hlcmd]).unsqueeze(0).to(self.device)
+            print(self.VARS.hlcmd)
+            high_level_command = torch.Tensor([self.VARS.hlcmd]).unsqueeze(0).to(self.device)
 
             # actual applying of the model
             control_predict = self.model(net_img,
@@ -96,13 +101,13 @@ class AutonomousDriver(object):
             # we get a vector of size (1,2)
             control_predict[0,1] = 0.45
             self.control_signal.angle = control_predict[0,0]
-            if acceleration >= 0.7 or acceleration <= -0.5:
+            if acceleration >= 0.7 or acceleration <= 0.3:
                 self.control_signal.speed = acceleration
             else:
                 self.control_signal.speed = 0.5
             self.control_pub.publish(self.control_signal)
 
-            rospy.loginfo("\nSteer predicted: " + str(control_predict[0,0]) + "\nAcc. predicted: " + str(control_predict[0,1]))
+            #rospy.loginfo("\nSteer predicted: " + str(control_predict[0,0]) + "\nAcc. predicted: " + str(control_predict[0,1]))
 
 
             # show the image
@@ -111,5 +116,6 @@ class AutonomousDriver(object):
 
 
 if __name__ == '__main__':
-    ad = AutonomousDriver()
+    VARS = myvariables()
+    ad = AutonomousDriver(VARS)
     rospy.spin()
